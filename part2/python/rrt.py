@@ -323,7 +323,7 @@ if __name__ == '__main__':
 
   # Load map.
   with open(args.map + '.yaml') as fp:
-    data = yaml.load(fp)
+    data = yaml.safe_load(fp)
   img = read_pgm(os.path.join(os.path.dirname(args.map), data['image']))
   occupancy_grid = np.empty_like(img, dtype=np.int8)
   occupancy_grid[:] = UNKNOWN

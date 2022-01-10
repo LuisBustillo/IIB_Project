@@ -73,7 +73,7 @@ def adjust_pose(node, final_position, occupancy_grid):
   if arc_angle_1 >= arc_angle_2:
   	arc_angle_1, arc_angle_2 = arc_angle_2, arc_angle_1
 
-  dtheta = 0.01
+  dtheta = 0.005
 
   arc_cost = radius*abs(arc_angle_2 - arc_angle_1)	# Length of trajectory following l=r*theta
   
@@ -231,7 +231,7 @@ def rrt(start_pose, goal_position, occupancy_grid):
     u.add_neighbor(v)
     v.parent = u
     graph.append(v)
-    if np.linalg.norm(v.position - goal_position) < .2:
+    if np.linalg.norm(v.position - goal_position) < .05:
 
       possible_ends.append(v)		# Store all trajectories leading to goal
 

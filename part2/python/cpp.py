@@ -26,7 +26,9 @@ UNKNOWN = 1
 OCCUPIED = 2
 
 ROBOT_RADIUS = 0.105 / 2.
-START_POSE = np.array([-1.8, 1.8, 0], dtype=np.float32)
+START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
+START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
+START_POSE_3 = np.array([0., 0., 0], dtype=np.float32)
 POSITIONS = []
 
 
@@ -116,14 +118,20 @@ def rotation_from_a_to_b(a, b, current_yaw):
 
     disp = np.array(b) - np.array(a)
     theta = np.arctan2(disp[Y], disp[X])
-    #TODO CHECK THE SIGN OF THE ROTATION
+    
     turn_angle = (theta - current_yaw)
+    #TODO CHECK THE SIGN AND VALUE OF THE ROTATION
+    if abs(turn_angle) < 0.001:
+      turn_angle = 0.
+
+    if abs(turn_angle) > np.pi:   # TODO CHECK EQUALITY
+      turn_angle = -1*np.sign(turn_angle)*((2*np.pi) - abs(turn_angle))
     
     new_yaw = current_yaw + turn_angle
 
     return turn_angle, new_yaw
 
-def draw_connections(path, head_width=0.05, head_length=0.1, arrow_length=0.1):
+def draw_connections(path, text = False, head_width=0.05, head_length=0.1, arrow_length=0.1):
   n = len(path)
   for node in range(n):
         current_node = path[node]
@@ -139,6 +147,8 @@ def draw_connections(path, head_width=0.05, head_length=0.1, arrow_length=0.1):
         if dir is not None:
           plt.arrow(current_node[X], current_node[Y], dir[0] * arrow_length, dir[1] * arrow_length,
               head_width=head_width, head_length=head_length, fc='k', ec='k')
+        if text == True:
+          plt.text(current_node[X], current_node[Y], str(node))
 
 def draw_nodes(path, color):
   for node in path:
@@ -147,6 +157,13 @@ def draw_nodes(path, color):
 def draw_individual_node(point, color):
   plt.scatter(point[0], point[1], s=10, marker='o', color=color, zorder=1000)
 
+def generate_yaml_path(path_points):
+      with open('route.yaml', 'w') as f:
+        index = 0
+        for point in path_points:
+          index += 1    
+          print("- {filename: 'p%s', position: { x: %s, y: %s}, rotation: %s}" % (index, point[0], point[1], point[2]), file = f)
+      print("File generated!")
 
 # Defines an occupancy grid.
 class OccupancyGrid(object):
@@ -488,9 +505,14 @@ def cpp(start_pose, occupancy_grid, start_indices=[155, 155], end_indices=[245,2
     coord_path.insert(0, start_pose[:2])
 
     def instruction_list(path, yaw):
-      n = len(path)
-      instructions = []     # list of strings --> each string is an instruction
+      # Path where each node is stored in the format required by YAML file
+      yaml_path = []
       
+      # list of strings --> each string is an instruction
+      instructions = []     
+
+      n = len(path)
+
       for node in range(n):
         current_node = path[node]
         if node == n-1:
@@ -500,6 +522,9 @@ def cpp(start_pose, occupancy_grid, start_indices=[155, 155], end_indices=[245,2
 
         rot, yaw = rotation_from_a_to_b(current_node, next_node, yaw)
 
+        yaml_node = np.append(current_node, rot)
+        yaml_path.append(yaml_node)
+
         if rot != 0:
           instructions.append("rt" + str(np.rad2deg(rot)))
 
@@ -507,7 +532,7 @@ def cpp(start_pose, occupancy_grid, start_indices=[155, 155], end_indices=[245,2
         instructions.append("fd" + str(dist))
         instructions.append("STOP")
 
-      return instructions
+      return instructions, yaml_path
 
     #TODO OVERLAY PATH ONTO ORIGINAL MAP USING POSITIONS OR INDICES
 
@@ -519,8 +544,7 @@ def cpp(start_pose, occupancy_grid, start_indices=[155, 155], end_indices=[245,2
     draw_individual_node(coord_path[1], color='green')
     # End Node
     draw_individual_node(coord_path[-1], color='yellow')
-    draw_connections(coord_path)
-    
+    draw_connections(coord_path, text=False, head_width=0.03, head_length=0.05, arrow_length=0.04)
     
     return instruction_list(coord_path, initial_yaw)
 
@@ -612,24 +636,43 @@ if __name__ == '__main__':
   
   fig, ax = plt.subplots()
   occupancy_grid.draw()
-  """
-  # Draw a dot at centre of obstacle
-  plt.scatter(.3, .2, s=10, marker='o', color='green', zorder=1000)
   
-  # Run cpp.
-  trajectory = prm(START_POSE, occupancy_grid)
-
-  # Draw Solution
-  draw_solution(trajectory)
+  # MAP 1
   
-  """
   plt.axis('equal')
   plt.xlabel('x')
   plt.ylabel('y')
   plt.xlim([-.5 - 2., 2. + .5])
   plt.ylim([-.5 - 2., 2. + .5])
   
-  inst = cpp(START_POSE, occupancy_grid)
-  print(inst)
+  inst, yaml = cpp(START_POSE_1, occupancy_grid)
+  print(yaml)
+  generate_yaml_path(yaml)
+  """
+  # MAP 2
+
+  plt.axis('equal')
+  plt.xlabel('x')
+  plt.ylabel('y')
+  plt.xlim([-1.0 - 2., 2. + .75])
+  plt.ylim([-.7 - 2., 2. + .7])
+
+  inst, yaml = cpp(START_POSE_2, occupancy_grid, start_indices=[160, 160], end_indices=[400, 400], scale=15)
+  generate_yaml_path(yaml)
+  
+  # MAP 3
+  
+  plt.axis('equal')
+  plt.xlabel('x')
+  plt.ylabel('y')
+  plt.xlim([-1., 1.])
+  plt.ylim([-1., 1.])
+  
+  print(occupancy_grid.get_index([-0.7, -0.61]))
+  print(occupancy_grid.get_index([0.7, 0.62]))
+
+  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[188, 188], end_indices=[218, 218], scale=3)
+  generate_yaml_path(yaml)
+  """
   plt.show()
 

@@ -35,11 +35,11 @@ except ImportError:
   raise ImportError('Unable to import potential_field.py. Make sure this file is in "{}"'.format(directory))
 
 # Read information from yaml file
-with open("/home/luis/catkin_ws/src/Turtlebot3_complete_coverage/nodes/route.yaml", 'r') as stream:
+with open("/home/luis/catkin_ws/src/IIB_Project/part2/python/route.yaml", 'r') as stream:
   dataMap = yaml.safe_load(stream)
 
 SPEED = .1
-EPSILON = .05
+EPSILON = .1
 
 X = 0
 Y = 1
@@ -254,7 +254,7 @@ def run(args):
         rate_limiter.sleep()
         continue
     
-      goal_reached = np.linalg.norm(slam.pose[:2] - path[0][:2]) < .2
+      goal_reached = np.linalg.norm(slam.pose[:2] - point[:2]) < .2
       if goal_reached:
         publisher.publish(stop_msg)
         rate_limiter.sleep()
@@ -271,12 +271,14 @@ def run(args):
       vel_msg.angular.z = w
       publisher.publish(vel_msg)
 
+      """
       # Update plan every 1s.
       time_since = current_time - previous_time
       if current_path and time_since < 2.:
         rate_limiter.sleep()
         continue
       previous_time = current_time
+      """
 
       # Run RRT.
       start_node, final_node = rrt.rrt(slam.pose, point[:2], slam.occupancy_grid)

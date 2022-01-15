@@ -314,7 +314,8 @@ if __name__ == '__main__':
 
     for point in path:
       signal.signal(signal.SIGALRM, handler)
-      signal.alarm(25)
+      t = 100*np.linalg.norm(slam.pose[:2] - point[:2])
+      signal.alarm(t)
       try:
         run(args, point, current_path, slam, publisher, rate_limiter, previous_time, frame_id)
 

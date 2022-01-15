@@ -72,7 +72,7 @@ def adjust_pose(node, final_position, occupancy_grid):
   if arc_angle_1 >= arc_angle_2:
   	arc_angle_1, arc_angle_2 = arc_angle_2, arc_angle_1
 
-  dtheta = 0.01
+  dtheta = 0.005
   
   for angle in np.arange(arc_angle_1, arc_angle_2, dtheta):
 

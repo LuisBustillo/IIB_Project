@@ -10,6 +10,7 @@ import os
 import rospy
 import sys
 import yaml
+import signal
 
 # Robot motion commands:
 # http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html
@@ -38,13 +39,15 @@ except ImportError:
 with open("/home/luis/catkin_ws/src/IIB_Project/part2/python/route.yaml", 'r') as stream:
   dataMap = yaml.safe_load(stream)
 
-SPEED = .1
-EPSILON = .1
+SPEED = .08
+EPSILON = .05
 
 X = 0
 Y = 1
 YAW = 2
 
+def handler(signum, frmae):
+  raise Exception("Unable to reach pose :(")
 
 def feedback_linearized(pose, velocity, epsilon):
   u = 0.  # [m/s]
@@ -244,66 +247,74 @@ def run(args):
 
   while not rospy.is_shutdown():
     for point in path:
-      slam.update()
-      current_time = rospy.Time.now().to_sec()
+      signal.signal(signal.SIGALRM, handler)
+      signal.alarm(30)
 
-      # Make sure all measurements are ready.
-      # Get map and current position through SLAM:
-      # > roslaunch exercises slam.launch
-      if not slam.ready:
-        rate_limiter.sleep()
-        continue
+      try:
+        slam.update()
+        current_time = rospy.Time.now().to_sec()
+
+        # Make sure all measurements are ready.
+        # Get map and current position through SLAM:
+        # > roslaunch exercises slam.launch
+        if not slam.ready:
+          rate_limiter.sleep()
+          continue
     
-      goal_reached = np.linalg.norm(slam.pose[:2] - point[:2]) < .2
-      if goal_reached:
-        publisher.publish(stop_msg)
-        rate_limiter.sleep()
-        continue
+        goal_reached = np.linalg.norm(slam.pose[:2] - point[:2]) < .2
+        if goal_reached:
+          publisher.publish(stop_msg)
+          rate_limiter.sleep()
+          continue
 
-      # Follow path using feedback linearization.
-      position = np.array([
-          slam.pose[X] + EPSILON * np.cos(slam.pose[YAW]),
-          slam.pose[Y] + EPSILON * np.sin(slam.pose[YAW])], dtype=np.float32)
-      v = get_velocity(position, np.array(current_path, dtype=np.float32))
-      u, w = feedback_linearized(slam.pose, v, epsilon=EPSILON)
-      vel_msg = Twist()
-      vel_msg.linear.x = u
-      vel_msg.angular.z = w
-      publisher.publish(vel_msg)
+        # Follow path using feedback linearization.
+        position = np.array([
+            slam.pose[X] + EPSILON * np.cos(slam.pose[YAW]),
+            slam.pose[Y] + EPSILON * np.sin(slam.pose[YAW])], dtype=np.float32)
+        v = get_velocity(position, np.array(current_path, dtype=np.float32))
+        u, w = feedback_linearized(slam.pose, v, epsilon=EPSILON)
+        vel_msg = Twist()
+        vel_msg.linear.x = u
+        vel_msg.angular.z = w
+        publisher.publish(vel_msg)
 
-      """
-      # Update plan every 1s.
-      time_since = current_time - previous_time
-      if current_path and time_since < 2.:
-        rate_limiter.sleep()
-        continue
-      previous_time = current_time
-      """
+        """
+        # Update plan every 1s.
+        time_since = current_time - previous_time
+        if current_path and time_since < 2.:
+          rate_limiter.sleep()
+          continue
+        previous_time = current_time
+        """
 
-      # Run RRT.
-      start_node, final_node = rrt.rrt(slam.pose, point[:2], slam.occupancy_grid)
-      current_path = get_path(final_node)
-      if not current_path:
-        print('Unable to reach goal position:', point[:2])
+        # Run RRT.
+        start_node, final_node = rrt.rrt(slam.pose, point[:2], slam.occupancy_grid)
+        current_path = get_path(final_node)
+        if not current_path:
+          print('Unable to reach goal position:', point[:2])
     
-      # Publish path to RViz.
-      path_msg = Path()
-      path_msg.header.seq = frame_id
-      path_msg.header.stamp = rospy.Time.now()
-      path_msg.header.frame_id = 'map'
-      for u in current_path:
-        pose_msg = PoseStamped()
-        pose_msg.header.seq = frame_id
-        pose_msg.header.stamp = path_msg.header.stamp
-        pose_msg.header.frame_id = 'map'
-        pose_msg.pose.position.x = u[X]
-        pose_msg.pose.position.y = u[Y]
-        path_msg.poses.append(pose_msg)
-      path_publisher.publish(path_msg)
+        # Publish path to RViz.
+        path_msg = Path()
+        path_msg.header.seq = frame_id
+        path_msg.header.stamp = rospy.Time.now()
+        path_msg.header.frame_id = 'map'
+        for u in current_path:
+          pose_msg = PoseStamped()
+          pose_msg.header.seq = frame_id
+          pose_msg.header.stamp = path_msg.header.stamp
+          pose_msg.header.frame_id = 'map'
+          pose_msg.pose.position.x = u[X]
+          pose_msg.pose.position.y = u[Y]
+          path_msg.poses.append(pose_msg)
+        path_publisher.publish(path_msg)
 
-      rate_limiter.sleep()
-      frame_id += 1
+        rate_limiter.sleep()
+        frame_id += 1
 
+      except Exception as exc:
+        print(exc)
+        
+    publisher.publish(stop_msg)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Runs RRT navigation')

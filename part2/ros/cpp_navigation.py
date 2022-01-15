@@ -215,31 +215,7 @@ def get_path(final_node):
   return list(zip(points_x, points_y))
   
 
-def run(args, point):
-  rospy.init_node('rrt_navigation')
-
-  # Update control every 100 ms.
-  rate_limiter = rospy.Rate(100)
-  publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
-  path_publisher = rospy.Publisher('/path', Path, queue_size=1)
-  slam = SLAM()
-  # goal = GoalPose()
-  frame_id = 0
-  current_path = []
-
-  previous_time = rospy.Time.now().to_sec()
-
-  # Stop moving message.
-  stop_msg = Twist()
-  stop_msg.linear.x = 0.
-  stop_msg.angular.z = 0.
-
-  # Make sure the robot is stopped.
-  i = 0
-  while i < 10 and not rospy.is_shutdown():
-    publisher.publish(stop_msg)
-    rate_limiter.sleep()
-    i += 1
+def run(args, point, slam, publisher, rate_limiter, previous_time, frame_id):
 
   while not rospy.is_shutdown():
 
@@ -311,11 +287,36 @@ if __name__ == '__main__':
     for obj in dataMap:
       path.append(np.array([obj['position']['x'], obj['position']['y'], obj['rotation']]))
 
+    rospy.init_node('rrt_navigation')
+
+    # Update control every 100 ms.
+    rate_limiter = rospy.Rate(100)
+    publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
+    path_publisher = rospy.Publisher('/path', Path, queue_size=1)
+    slam = SLAM()
+    
+    frame_id = 0
+    current_path = []
+
+    previous_time = rospy.Time.now().to_sec()
+
+    # Stop moving message.
+    stop_msg = Twist()
+    stop_msg.linear.x = 0.
+    stop_msg.angular.z = 0.
+
+    # Make sure the robot is stopped.
+    i = 0
+    while i < 10 and not rospy.is_shutdown():
+      publisher.publish(stop_msg)
+      rate_limiter.sleep()
+      i += 1
+
     for point in path:
       signal.signal(signal.SIGALRM, handler)
       signal.alarm(25)
       try:
-        run(args, point)
+        run(args, point, slam, publisher, rate_limiter, previous_time, frame_id)
 
       except Exception as exc:
         print(exc)

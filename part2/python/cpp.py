@@ -645,8 +645,7 @@ if __name__ == '__main__':
   plt.xlim([-.5 - 2., 2. + .5])
   plt.ylim([-.5 - 2., 2. + .5])
   
-  inst, yaml = cpp(START_POSE_1, occupancy_grid)
-  print(yaml)
+  inst, yaml = cpp(START_POSE_1, occupancy_grid, start_indices=[155, 155], end_indices=[245,245], scale=15)
   generate_yaml_path(yaml)
   """
   # MAP 2

@@ -10,6 +10,7 @@ import os
 import rospy
 import sys
 import yaml
+import signal
 
 # Robot motion commands:
 # http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html
@@ -38,12 +39,15 @@ except ImportError:
 with open("/home/luis/catkin_ws/src/IIB_Project/part2/python/route.yaml", 'r') as stream:
   dataMap = yaml.safe_load(stream)
 
-SPEED = .05
+SPEED = .1
 EPSILON = .05
 
 X = 0
 Y = 1
 YAW = 2
+
+def handler(signum, frmae):
+  raise Exception("Could not find pose :(")
 
 def feedback_linearized(pose, velocity, epsilon):
   u = 0.  # [m/s]
@@ -68,7 +72,7 @@ def get_velocity(position, path_points):
   if len(path_points) == 0:
     return v
   # Stop moving if the goal is reached.
-  if np.linalg.norm(position - path_points[-1]) < .2:
+  if np.linalg.norm(position - path_points[-1]) < .1:
     return v
 
   # MISSING: Return the velocity needed to follow the
@@ -97,7 +101,7 @@ def get_velocity(position, path_points):
   next_point = path_points[max(closest_index, second_closest_index)]
   
   v = next_point - position
-  v = v*0.25/np.linalg.norm(v)
+  v = v*SPEED/np.linalg.norm(v)
   
 
   return v
@@ -211,7 +215,7 @@ def get_path(final_node):
   return list(zip(points_x, points_y))
   
 
-def run(args):
+def run(args, point):
   rospy.init_node('rrt_navigation')
 
   # Update control every 100 ms.
@@ -222,10 +226,6 @@ def run(args):
   # goal = GoalPose()
   frame_id = 0
   current_path = []
-
-  path = []
-  for obj in dataMap:
-    path.append(np.array([obj['position']['x'], obj['position']['y'], obj['rotation']]))
 
   previous_time = rospy.Time.now().to_sec()
 
@@ -242,75 +242,83 @@ def run(args):
     i += 1
 
   while not rospy.is_shutdown():
-    for point in path:
 
-      while (np.linalg.norm(slam.pose[:2] - point[:2]) > .1):
-        slam.update()
-        current_time = rospy.Time.now().to_sec()
+    slam.update()
+    current_time = rospy.Time.now().to_sec()
 
-        # Make sure all measurements are ready.
-        # Get map and current position through SLAM:
-        # > roslaunch exercises slam.launch
-        if not slam.ready:
-          rate_limiter.sleep()
-          continue
+    # Make sure all measurements are ready.
+    # Get map and current position through SLAM:
+    # > roslaunch exercises slam.launch
+    if not slam.ready:
+      rate_limiter.sleep()
+      continue
     
-        goal_reached = np.linalg.norm(slam.pose[:2] - point[:2]) < .2
-        if goal_reached:
-          publisher.publish(stop_msg)
-          rate_limiter.sleep()
-          continue
+    goal_reached = np.linalg.norm(slam.pose[:2] - point[:2]) < .1
+    if goal_reached:
+      publisher.publish(stop_msg)
+      rate_limiter.sleep()
+      continue
 
-        # Follow path using feedback linearization.
-        position = np.array([
-            slam.pose[X] + EPSILON * np.cos(slam.pose[YAW]),
-            slam.pose[Y] + EPSILON * np.sin(slam.pose[YAW])], dtype=np.float32)
-        v = get_velocity(position, np.array(current_path, dtype=np.float32))
-        u, w = feedback_linearized(slam.pose, v, epsilon=EPSILON)
-        vel_msg = Twist()
-        vel_msg.linear.x = u
-        vel_msg.angular.z = w
-        publisher.publish(vel_msg)
+    # Follow path using feedback linearization.
+    position = np.array([
+        slam.pose[X] + EPSILON * np.cos(slam.pose[YAW]),
+        slam.pose[Y] + EPSILON * np.sin(slam.pose[YAW])], dtype=np.float32)
+    v = get_velocity(position, np.array(current_path, dtype=np.float32))
+    u, w = feedback_linearized(slam.pose, v, epsilon=EPSILON)
+    vel_msg = Twist()
+    vel_msg.linear.x = u
+    vel_msg.angular.z = w
+    publisher.publish(vel_msg)
 
-        """
-        # Update plan every 1s.
-        time_since = current_time - previous_time
-        if current_path and time_since < 2.:
-          rate_limiter.sleep()
-          continue
-        previous_time = current_time
-        """
+    # Update plan every 1s.
+    time_since = current_time - previous_time
+    if current_path and time_since < 2.:
+      rate_limiter.sleep()
+      continue
+    previous_time = current_time
 
-        # Run RRT.
-        start_node, final_node = rrt.rrt(slam.pose, point[:2], slam.occupancy_grid)
-        current_path = get_path(final_node)
-        if not current_path:
-          print('Unable to reach goal position:', point[:2])
+    # Run RRT.
+    start_node, final_node = rrt.rrt(slam.pose, point[:2], slam.occupancy_grid)
+    current_path = get_path(final_node)
+    if not current_path:
+      print('Unable to reach goal position:', point[:2])
     
-        # Publish path to RViz.
-        path_msg = Path()
-        path_msg.header.seq = frame_id
-        path_msg.header.stamp = rospy.Time.now()
-        path_msg.header.frame_id = 'map'
-        for u in current_path:
-          pose_msg = PoseStamped()
-          pose_msg.header.seq = frame_id
-          pose_msg.header.stamp = path_msg.header.stamp
-          pose_msg.header.frame_id = 'map'
-          pose_msg.pose.position.x = u[X]
-          pose_msg.pose.position.y = u[Y]
-          path_msg.poses.append(pose_msg)
-        path_publisher.publish(path_msg)
+    # Publish path to RViz.
+    path_msg = Path()
+    path_msg.header.seq = frame_id
+    path_msg.header.stamp = rospy.Time.now()
+    path_msg.header.frame_id = 'map'
+    for u in current_path:
+      pose_msg = PoseStamped()
+      pose_msg.header.seq = frame_id
+      pose_msg.header.stamp = path_msg.header.stamp
+      pose_msg.header.frame_id = 'map'
+      pose_msg.pose.position.x = u[X]
+      pose_msg.pose.position.y = u[Y]
+      path_msg.poses.append(pose_msg)
+    path_publisher.publish(path_msg)
 
-        rate_limiter.sleep()
-        frame_id += 1
+    rate_limiter.sleep()
+    frame_id += 1
 
-    publisher.publish(stop_msg)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Runs RRT navigation')
   args, unknown = parser.parse_known_args()
   try:
-    run(args)
+
+    path = []
+    for obj in dataMap:
+      path.append(np.array([obj['position']['x'], obj['position']['y'], obj['rotation']]))
+
+    for point in path:
+      signal.signal(signal.SIGALRM, handler)
+      signal.alarm(25)
+      try:
+        run(args, point)
+
+      except Exception as exc:
+        print(exc)
+
   except rospy.ROSInterruptException:
     pass

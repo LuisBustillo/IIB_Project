@@ -10,7 +10,6 @@ import os
 import rospy
 import sys
 import yaml
-import signal
 
 # Robot motion commands:
 # http://docs.ros.org/api/geometry_msgs/html/msg/Twist.html
@@ -39,15 +38,12 @@ except ImportError:
 with open("/home/luis/catkin_ws/src/IIB_Project/part2/python/route.yaml", 'r') as stream:
   dataMap = yaml.safe_load(stream)
 
-SPEED = .08
+SPEED = .05
 EPSILON = .05
 
 X = 0
 Y = 1
 YAW = 2
-
-def handler(signum, frmae):
-  raise Exception("Unable to reach pose :(")
 
 def feedback_linearized(pose, velocity, epsilon):
   u = 0.  # [m/s]
@@ -247,10 +243,8 @@ def run(args):
 
   while not rospy.is_shutdown():
     for point in path:
-      signal.signal(signal.SIGALRM, handler)
-      signal.alarm(30)
 
-      try:
+      while (np.linalg.norm(slam.pose[:2] - point[:2]) > .1):
         slam.update()
         current_time = rospy.Time.now().to_sec()
 
@@ -311,9 +305,6 @@ def run(args):
         rate_limiter.sleep()
         frame_id += 1
 
-      except Exception as exc:
-        print(exc)
-        
     publisher.publish(stop_msg)
 
 if __name__ == '__main__':

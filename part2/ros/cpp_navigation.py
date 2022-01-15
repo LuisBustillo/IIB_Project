@@ -215,7 +215,7 @@ def get_path(final_node):
   return list(zip(points_x, points_y))
   
 
-def run(args, point, slam, publisher, rate_limiter, previous_time, frame_id):
+def run(args, point, current_path, slam, publisher, rate_limiter, previous_time, frame_id):
 
   while not rospy.is_shutdown():
 
@@ -316,7 +316,7 @@ if __name__ == '__main__':
       signal.signal(signal.SIGALRM, handler)
       signal.alarm(25)
       try:
-        run(args, point, slam, publisher, rate_limiter, previous_time, frame_id)
+        run(args, point, current_path, slam, publisher, rate_limiter, previous_time, frame_id)
 
       except Exception as exc:
         print(exc)

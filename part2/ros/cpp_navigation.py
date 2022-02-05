@@ -33,7 +33,7 @@ try:
   import rrt as rrt
   
 except ImportError:
-  raise ImportError('Unable to import potential_field.py. Make sure this file is in "{}"'.format(directory))
+  raise ImportError('Unable to import rrt.py. Make sure this file is in "{}"'.format(directory))
 
 # Read information from yaml file
 with open("/home/luis/catkin_ws/src/IIB_Project/part2/python/route.yaml", 'r') as stream:

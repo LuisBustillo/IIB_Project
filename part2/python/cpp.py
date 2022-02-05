@@ -25,7 +25,7 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-ROBOT_RADIUS = 0.105 / 2.
+ROBOT_RADIUS = 0.15 / 2.
 START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
 START_POSE_3 = np.array([0., 0., 0], dtype=np.float32)
@@ -54,10 +54,15 @@ def draw_grid(x_start, x_end, y_start, y_end, spacing_x, spacing_y):
 def area_covered(occupancy_grid, positions):
     """
     Estimates the percentage of an area the robot has covered from the robot dimensions and its x,y position
+    Robot occupies 9 cells at any given time
 
     occupancy_grid: Occupancy_grid object 
     positions: list of tuples of x,y positions
     """
+
+    #TODO convert list of x,y points into list of 3x3 grid occupied by robot
+    #TODO remove duplicates from visited cell list
+
     free_area = 0
     for row in occupancy_grid.values:
         for element in row:
@@ -670,8 +675,7 @@ if __name__ == '__main__':
   print(occupancy_grid.get_index([-0.7, -0.61]))
   print(occupancy_grid.get_index([0.7, 0.62]))
 
-  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[188, 188], end_indices=[218, 218], scale=5)
+  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[188, 188], end_indices=[218, 218], scale=3)
   generate_yaml_path(yaml)
   
   plt.show()
-

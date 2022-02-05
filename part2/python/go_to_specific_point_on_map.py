@@ -142,6 +142,7 @@ class SLAM(object):
   def occupancy_grid(self):
     return self._occupancy_grid
 
+#TODO Use this for localization of robot by choosing arrow location and direction through Rviz
 class GoalPose(object):
   def __init__(self):
     rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.callback)
@@ -160,6 +161,10 @@ class GoalPose(object):
   @property
   def position(self):
     return self._position
+
+
+# Main Navigation Code
+
 
 class GoToPose():
     def __init__(self):
@@ -195,10 +200,14 @@ class GoToPose():
         goal_y = point['y']
         goal_z = angle
 
-        (self.position, rotation) = self.get_odom()
+        slam.update()
+
+        #(self.position, rotation) = self.get_odom()
+        self.position = slam.pose[:2]
+        rotation = slam.pose[YAW]
         last_rotation = 0
         linear_speed = 0.1
-        angular_speed = 2
+        angular_speed = 1
 
         goal_distance = sqrt(pow(goal_x - self.position.x, 2) + pow(goal_y - self.position.y, 2))
         distance = goal_distance
@@ -207,7 +216,15 @@ class GoToPose():
         print("goal", goal_x, goal_y, goal_z)
 
         while distance > 0.05:
-            (self.position, rotation) = self.get_odom()
+            if not slam.ready:
+              self.r.sleep()
+              continue
+
+            slam.update()
+
+            #(self.position, rotation) = self.get_odom()
+            self.position = slam.pose[:2]
+            rotation = slam.pose[YAW]
             x_start = self.position.x
             y_start = self.position.y
 
@@ -238,7 +255,9 @@ class GoToPose():
             
             self.cmd_vel.publish(self.move_cmd)
             
-        (self.position, rotation) = self.get_odom()
+        #(self.position, rotation) = self.get_odom()
+        self.position = slam.pose[:2]
+        rotation = slam.pose[YAW]
 
         if abs(goal_z) > pi / 2:
             while abs(rotation - goal_z) > 0.01:

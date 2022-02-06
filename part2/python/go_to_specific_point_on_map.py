@@ -8,6 +8,8 @@ from math import radians, copysign, sqrt, pow, pi, atan2
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
+import yaml
+import signal
 
 from geometry_msgs.msg import Twist, Point, Quaternion
 # Occupancy grid.
@@ -165,7 +167,6 @@ class GoalPose(object):
 
 # Main Navigation Code
 
-
 class GoToPose():
     def __init__(self):
         # rospy.init_node('turtlebot3_pointop_key', anonymous=False)
@@ -296,3 +297,46 @@ class GoToPose():
     def shutdown(self):
         self.cmd_vel.publish(Twist())
         rospy.sleep(1)
+
+def handler(signum, frmae):
+      raise Exception("Unable to reach pose :(")
+
+if __name__ == '__main__':
+  
+    print("follow_route running")
+    rospy.loginfo("follow_route running")
+    # Read information from yaml file
+    with open("/home/luis/catkin_ws/src/IIB_Project/part2/python/route.yaml", 'r') as stream:
+        dataMap = yaml.safe_load(stream)
+
+    print("loaded")
+
+    # m = Area.MeasureAreaCovered()
+    try:
+        # Initialize
+        rospy.init_node('follow_route', anonymous=False)
+        slam = SLAM()
+        navigator = GoToPose()
+
+        for obj in dataMap:
+
+            if rospy.is_shutdown():
+                break
+            name = obj['filename']
+            print(obj)
+            signal.signal(signal.SIGALRM, handler)
+            signal.alarm(25)
+            # Navigation
+            try:
+                rospy.loginfo("Go to %s pose", name[:-4])
+                navigator.goto(obj['position'], obj['rotation'])
+                rospy.loginfo("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Reached %s pose", name[:-4])
+            except Exception as exc:
+                print(exc)
+
+
+        # m.disp()
+
+
+    except rospy.ROSInterruptException:
+        rospy.loginfo("Ctrl-C caught. Quitting")

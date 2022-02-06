@@ -2,6 +2,10 @@
 
 # Turtlebot3 pointop_key navigation
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import rospy
 import tf
 from math import radians, copysign, sqrt, pow, pi, atan2
@@ -36,66 +40,10 @@ OCCUPIED = 2
 ROBOT_RADIUS = 0.15 / 2.
 
 
-
 #TODO Edit GoToPose so that pose estimates come from slam/lidar not odometry
 #TODO Make each new position a GoalPose object
 #TODO Add remaining elements from run() function in cpp_navigation and rtt_navigation
 # to follow_the_route.py
-
-
-class OccupancyGrid(object):
-  def __init__(self, values, origin, resolution):
-    self._original_values = values.copy()
-    self._values = values.copy()
-    # Inflate obstacles (using a convolution).
-    inflated_grid = np.zeros_like(values)
-    inflated_grid[values == OCCUPIED] = 1.
-    w = 2 * int(ROBOT_RADIUS / resolution) + 1
-    inflated_grid = scipy.signal.convolve2d(inflated_grid, np.ones((w, w)), mode='same')
-    self._values[inflated_grid > 0.] = OCCUPIED
-    self._origin = np.array(origin[:2], dtype=np.float32)
-    self._origin -= resolution / 2.
-    assert origin[YAW] == 0.
-    self._resolution = resolution
-
-  @property
-  def values(self):
-    return self._values
-
-  @property
-  def resolution(self):
-    return self._resolution
-
-  @property
-  def origin(self):
-    return self._origin
-
-  def draw(self):
-    plt.imshow(self._original_values.T, interpolation='none', origin='lower',
-               extent=[self._origin[X],
-                       self._origin[X] + self._values.shape[0] * self._resolution,
-                       self._origin[Y],
-                       self._origin[Y] + self._values.shape[1] * self._resolution])
-    plt.set_cmap('gray_r')
-
-  def get_index(self, position):
-    idx = ((position - self._origin) / self._resolution).astype(np.int32)
-    if len(idx.shape) == 2:
-      idx[:, 0] = np.clip(idx[:, 0], 0, self._values.shape[0] - 1)
-      idx[:, 1] = np.clip(idx[:, 1], 0, self._values.shape[1] - 1)
-      return (idx[:, 0], idx[:, 1])
-    idx[0] = np.clip(idx[0], 0, self._values.shape[0] - 1)
-    idx[1] = np.clip(idx[1], 0, self._values.shape[1] - 1)
-    return tuple(idx)
-
-  def get_position(self, i, j):
-    return np.array([i, j], dtype=np.float32) * self._resolution + self._origin
-
-  def is_occupied(self, position):
-    return self._values[self.get_index(position)] == OCCUPIED
-
-  def is_free(self, position):
-    return self._values[self.get_index(position)] == FREE
 
 class SLAM(object):
   def __init__(self):
@@ -164,7 +112,6 @@ class GoalPose(object):
   def position(self):
     return self._position
 
-
 # Main Navigation Code
 
 class GoToPose():
@@ -177,6 +124,7 @@ class GoToPose():
         self.r = rospy.Rate(1000)
         self.tf_listener = tf.TransformListener()
         self.odom_frame= 'odom'
+        self.slam = SLAM()
 
         self.r.sleep()
         try:
@@ -201,11 +149,11 @@ class GoToPose():
         goal_y = point['y']
         goal_z = angle
 
-        slam.update()
+        self.slam.update()
 
         #(self.position, rotation) = self.get_odom()
-        self.position = slam.pose[:2]
-        rotation = slam.pose[YAW]
+        self.position = self.slam.pose[:2]
+        rotation = self.slam.pose[YAW]
         last_rotation = 0
         linear_speed = 0.1
         angular_speed = 1
@@ -217,15 +165,15 @@ class GoToPose():
         print("goal", goal_x, goal_y, goal_z)
 
         while distance > 0.05:
-            if not slam.ready:
+            if not self.slam.ready:
               self.r.sleep()
               continue
 
-            slam.update()
+            self.slam.update()
 
             #(self.position, rotation) = self.get_odom()
-            self.position = slam.pose[:2]
-            rotation = slam.pose[YAW]
+            self.position = self.slam.pose[:2]
+            rotation = self.slam.pose[YAW]
             x_start = self.position.x
             y_start = self.position.y
 
@@ -257,12 +205,17 @@ class GoToPose():
             self.cmd_vel.publish(self.move_cmd)
             
         #(self.position, rotation) = self.get_odom()
-        self.position = slam.pose[:2]
-        rotation = slam.pose[YAW]
+        self.position = self.slam.pose[:2]
+        rotation = self.slam.pose[YAW]
+
+        self.slam.update()
 
         if abs(goal_z) > pi / 2:
             while abs(rotation - goal_z) > 0.01:
-                (self.position, rotation) = self.get_odom()
+                #(self.position, rotation) = self.get_odom()
+                self.slam.update()
+                self.position = self.slam.pose[:2]
+                rotation = self.slam.pose[YAW]
                 if goal_z >= 0:
                     if rotation <= goal_z and rotation >= goal_z - pi:
                         self.move_cmd.linear.x = 0.00
@@ -298,45 +251,3 @@ class GoToPose():
         self.cmd_vel.publish(Twist())
         rospy.sleep(1)
 
-def handler(signum, frmae):
-      raise Exception("Unable to reach pose :(")
-
-if __name__ == '__main__':
-  
-    print("follow_route running")
-    rospy.loginfo("follow_route running")
-    # Read information from yaml file
-    with open("/home/luis/catkin_ws/src/IIB_Project/part2/python/route.yaml", 'r') as stream:
-        dataMap = yaml.safe_load(stream)
-
-    print("loaded")
-
-    # m = Area.MeasureAreaCovered()
-    try:
-        # Initialize
-        rospy.init_node('follow_route', anonymous=False)
-        slam = SLAM()
-        navigator = GoToPose()
-
-        for obj in dataMap:
-
-            if rospy.is_shutdown():
-                break
-            name = obj['filename']
-            print(obj)
-            signal.signal(signal.SIGALRM, handler)
-            signal.alarm(25)
-            # Navigation
-            try:
-                rospy.loginfo("Go to %s pose", name[:-4])
-                navigator.goto(obj['position'], obj['rotation'])
-                rospy.loginfo("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Reached %s pose", name[:-4])
-            except Exception as exc:
-                print(exc)
-
-
-        # m.disp()
-
-
-    except rospy.ROSInterruptException:
-        rospy.loginfo("Ctrl-C caught. Quitting")

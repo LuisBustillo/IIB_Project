@@ -46,8 +46,8 @@ def draw_grid(x_start, x_end, y_start, y_end, spacing_x, spacing_y):
 
     plt.scatter(x, y, s=2, c='b')
 
-    # Drawing grid of x,y points
-    #draw_grid(WIDTH[0], WIDTH[1], HEIGHT[0], HEIGHT[1], SPACING[0], SPACING[1])
+# Drawing grid of x,y points
+#draw_grid(WIDTH[0], WIDTH[1], HEIGHT[0], HEIGHT[1], SPACING[0], SPACING[1])
 
 # Hepler Functions
 

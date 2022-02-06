@@ -60,61 +60,6 @@ ROBOT_RADIUS = 0.15 / 2.
 #TODO Add remaining elements from run() function in cpp_navigation and rtt_navigation
 # to follow_the_route.py
 
-"""
-class OccupancyGrid(object):
-  def __init__(self, values, origin, resolution):
-    self._original_values = values.copy()
-    self._values = values.copy()
-    # Inflate obstacles (using a convolution).
-    inflated_grid = np.zeros_like(values)
-    inflated_grid[values == OCCUPIED] = 1.
-    w = 2 * int(ROBOT_RADIUS / resolution) + 1
-    inflated_grid = scipy.signal.convolve2d(inflated_grid, np.ones((w, w)), mode='same')
-    self._values[inflated_grid > 0.] = OCCUPIED
-    self._origin = np.array(origin[:2], dtype=np.float32)
-    self._origin -= resolution / 2.
-    assert origin[YAW] == 0.
-    self._resolution = resolution
-
-  @property
-  def values(self):
-    return self._values
-
-  @property
-  def resolution(self):
-    return self._resolution
-
-  @property
-  def origin(self):
-    return self._origin
-
-  def draw(self):
-    plt.imshow(self._original_values.T, interpolation='none', origin='lower',
-               extent=[self._origin[X],
-                       self._origin[X] + self._values.shape[0] * self._resolution,
-                       self._origin[Y],
-                       self._origin[Y] + self._values.shape[1] * self._resolution])
-    plt.set_cmap('gray_r')
-
-  def get_index(self, position):
-    idx = ((position - self._origin) / self._resolution).astype(np.int32)
-    if len(idx.shape) == 2:
-      idx[:, 0] = np.clip(idx[:, 0], 0, self._values.shape[0] - 1)
-      idx[:, 1] = np.clip(idx[:, 1], 0, self._values.shape[1] - 1)
-      return (idx[:, 0], idx[:, 1])
-    idx[0] = np.clip(idx[0], 0, self._values.shape[0] - 1)
-    idx[1] = np.clip(idx[1], 0, self._values.shape[1] - 1)
-    return tuple(idx)
-
-  def get_position(self, i, j):
-    return np.array([i, j], dtype=np.float32) * self._resolution + self._origin
-
-  def is_occupied(self, position):
-    return self._values[self.get_index(position)] == OCCUPIED
-
-  def is_free(self, position):
-    return self._values[self.get_index(position)] == FREE
-"""
 class SLAM(object):
   def __init__(self):
     rospy.Subscriber('/map', OccupancyGrid, self.callback)
@@ -129,7 +74,7 @@ class SLAM(object):
     processed[values < 0] = UNKNOWN
     processed[values > 50] = OCCUPIED
     processed = processed.T
-    origin = [msg.info.origin.position[X], msg.info.origin.position[Y], 0.]
+    origin = [msg.info.origin.position.x, msg.info.origin.position.y, 0.]
     resolution = msg.info.resolution
     self._occupancy_grid = OccupancyGrid(processed, origin, resolution)
 
@@ -184,7 +129,6 @@ class GoalPose(object):
 
 # Main Navigation Code
 
-# Point == Goal
 def goto(slam, point, angle):
     (goal_x, goal_y, goal_z) = (0, 0, 0)
     goal_x = point['x']
@@ -254,6 +198,7 @@ def goto(slam, point, angle):
     if abs(goal_z) > pi / 2:
         while abs(rotation - goal_z) > 0.01:
             #(position, rotation) = self.get_odom()
+            slam.update()
             position = slam.pose[:2]
             rotation = slam.pose[YAW]
 
@@ -275,20 +220,6 @@ def goto(slam, point, angle):
 
     rospy.loginfo("point reached")
     cmd_vel.publish(Twist())
-
-"""
-def get_odom(self):
-    try:
-        (trans, rot) = self.tf_listener.lookupTransform(self.odom_frame, self.base_frame, rospy.Time(0))
-        rotation = euler_from_quaternion(rot)
-
-    except (tf.Exception, tf.ConnectivityException, tf.LookupException):
-        rospy.loginfo("TF Exception")
-        return
-
-    return (Point(*trans), rotation[2])
-
-"""
 
 
 if __name__ == '__main__':
@@ -353,7 +284,7 @@ if __name__ == '__main__':
             name = obj['filename']
             print(obj)
             signal.signal(signal.SIGALRM, handler)
-            signal.alarm(25)
+            signal.alarm(40)
             # Navigation
             try:
                 rospy.loginfo("Go to %s pose", name[:-4])

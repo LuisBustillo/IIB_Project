@@ -152,7 +152,7 @@ class GoToPose():
         self.slam.update()
 
         #(self.position, rotation) = self.get_odom()
-        self.position = Point(np.append(self.slam.pose[:2], [0]))
+        self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
         rotation = self.slam.pose[YAW]
         last_rotation = 0
         linear_speed = 0.1
@@ -172,7 +172,7 @@ class GoToPose():
             self.slam.update()
 
             #(self.position, rotation) = self.get_odom()
-            self.position = Point(np.append(self.slam.pose[:2], [0]))
+            self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
             rotation = self.slam.pose[YAW]
             x_start = self.position.x
             y_start = self.position.y
@@ -205,7 +205,7 @@ class GoToPose():
             self.cmd_vel.publish(self.move_cmd)
             
         #(self.position, rotation) = self.get_odom()
-        self.position = Point(np.append(self.slam.pose[:2], [0]))
+        self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
         rotation = self.slam.pose[YAW]
 
         self.slam.update()
@@ -214,7 +214,7 @@ class GoToPose():
             while abs(rotation - goal_z) > 0.01:
                 #(self.position, rotation) = self.get_odom()
                 self.slam.update()
-                self.position = Point(np.append(self.slam.pose[:2], [0]))
+                self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
                 rotation = self.slam.pose[YAW]
                 if goal_z >= 0:
                     if rotation <= goal_z and rotation >= goal_z - pi:

@@ -28,7 +28,8 @@ from tf.transformations import euler_from_quaternion
 directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
 sys.path.insert(0, directory)
 try:
-  import rrt_improved as rrt
+  #import rrt_improved as rrt
+  import rrt as rrt
 except ImportError:
   raise ImportError('Unable to import potential_field.py. Make sure this file is in "{}"'.format(directory))
 

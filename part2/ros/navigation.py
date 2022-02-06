@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import sys
 import signal
@@ -56,7 +60,7 @@ ROBOT_RADIUS = 0.15 / 2.
 #TODO Add remaining elements from run() function in cpp_navigation and rtt_navigation
 # to follow_the_route.py
 
-
+"""
 class OccupancyGrid(object):
   def __init__(self, values, origin, resolution):
     self._original_values = values.copy()
@@ -110,7 +114,7 @@ class OccupancyGrid(object):
 
   def is_free(self, position):
     return self._values[self.get_index(position)] == FREE
-
+"""
 class SLAM(object):
   def __init__(self):
     rospy.Subscriber('/map', OccupancyGrid, self.callback)

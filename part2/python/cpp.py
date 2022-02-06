@@ -641,7 +641,7 @@ if __name__ == '__main__':
   
   fig, ax = plt.subplots()
   occupancy_grid.draw()
-  """
+  
   # MAP 1
   
   plt.axis('equal')
@@ -650,9 +650,9 @@ if __name__ == '__main__':
   plt.xlim([-.5 - 2., 2. + .5])
   plt.ylim([-.5 - 2., 2. + .5])
   
-  inst, yaml = cpp(START_POSE_1, occupancy_grid, start_indices=[155, 155], end_indices=[245,245], scale=15) # scale = 6
+  inst, yaml = cpp(START_POSE_1, occupancy_grid, start_indices=[155, 155], end_indices=[245,245], scale=6) # scale = 6
   generate_yaml_path(yaml)
-  
+  """
   # MAP 2
 
   plt.axis('equal')
@@ -663,7 +663,7 @@ if __name__ == '__main__':
 
   inst, yaml = cpp(START_POSE_2, occupancy_grid, start_indices=[160, 160], end_indices=[400, 400], scale=15)
   generate_yaml_path(yaml)
-  """
+  
   # MAP 3
   
   plt.axis('equal')
@@ -677,5 +677,5 @@ if __name__ == '__main__':
 
   inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[188, 188], end_indices=[218, 218], scale=3)
   generate_yaml_path(yaml)
-  
+  """
   plt.show()

@@ -34,7 +34,6 @@ if __name__ == '__main__':
     try:
         # Initialize
         rospy.init_node('follow_route', anonymous=False)
-        slam = Nav.SLAM()
         navigator = Nav.GoToPose()
 
         for obj in dataMap:
@@ -44,7 +43,7 @@ if __name__ == '__main__':
             name = obj['filename']
             print(obj)
             signal.signal(signal.SIGALRM, handler)
-            signal.alarm(25)
+            signal.alarm(15)
             # Navigation
             try:
                 rospy.loginfo("Go to %s pose", name[:-4])

@@ -155,8 +155,8 @@ class GoToPose():
         self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
         rotation = self.slam.pose[YAW]
         last_rotation = 0
-        linear_speed = 0.1
-        angular_speed = 1
+        linear_speed = 0.03
+        angular_speed = 0.3
 
         goal_distance = sqrt(pow(goal_x - self.position.x, 2) + pow(goal_y - self.position.y, 2))
         distance = goal_distance
@@ -164,7 +164,7 @@ class GoToPose():
 
         print("goal", goal_x, goal_y, goal_z)
 
-        while distance > 0.05:
+        while distance > 0.03:
             if not self.slam.ready:
               self.r.sleep()
               continue
@@ -186,7 +186,7 @@ class GoToPose():
                 break
 
             # proportional control for linear speed
-            self.move_cmd.linear.x = min(linear_speed * distance ** 1.1 + 0.1, linear_speed)
+            self.move_cmd.linear.x = min(linear_speed * distance ** 1.1 + 0.01, linear_speed)
 
             # proportional control for heading
             if path_angle >= 0:
@@ -219,17 +219,17 @@ class GoToPose():
                 if goal_z >= 0:
                     if rotation <= goal_z and rotation >= goal_z - pi:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = min(1.5 * abs(rotation - goal_z), 1.5)
+                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.5)
                     else:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = -min(1.5 * abs(rotation - goal_z), 1.5)
+                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.5)
                 else:
                     if rotation <= goal_z + pi and rotation > goal_z:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = -min(1.5 * abs(rotation - goal_z), 1.5)
+                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.5)
                     else:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = min(1.5 * abs(rotation - goal_z), 1.5)
+                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.5)
                 self.cmd_vel.publish(self.move_cmd)
 
         print(self.position.x, self.position.y, rotation)

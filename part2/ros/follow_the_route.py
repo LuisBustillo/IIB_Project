@@ -44,7 +44,7 @@ if __name__ == '__main__':
             name = obj['filename']
             print(obj)
             signal.signal(signal.SIGALRM, handler)
-            signal.alarm(40)
+            signal.alarm(25)
             # Navigation
             try:
                 rospy.loginfo("Go to %s pose", name[:-4])

@@ -28,7 +28,7 @@ OCCUPIED = 2
 ROBOT_RADIUS = 0.15 / 2.
 START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
-START_POSE_3 = np.array([0., 0., 0], dtype=np.float32)
+START_POSE_3 = np.array([0.4, -0.03, -0.19], dtype=np.float32)
 POSITIONS = []
 
 
@@ -132,6 +132,8 @@ def rotation_from_a_to_b(a, b, current_yaw):
     if abs(turn_angle) > np.pi:   # TODO CHECK EQUALITY
       turn_angle = -1*np.sign(turn_angle)*((2*np.pi) - abs(turn_angle))
     
+    # CHECK
+    #turn_angle = -turn_angle
     new_yaw = current_yaw + turn_angle
 
     return turn_angle, new_yaw
@@ -642,7 +644,8 @@ if __name__ == '__main__':
   fig, ax = plt.subplots()
   occupancy_grid.draw()
   
-  # MAP 1
+  """
+  # MAP 1 - 4M20 
   
   plt.axis('equal')
   plt.xlabel('x')
@@ -650,10 +653,10 @@ if __name__ == '__main__':
   plt.xlim([-.5 - 2., 2. + .5])
   plt.ylim([-.5 - 2., 2. + .5])
   
-  inst, yaml = cpp(START_POSE_1, occupancy_grid, start_indices=[155, 155], end_indices=[245,245], scale=6) # scale = 6
+  inst, yaml = cpp(START_POSE_1, occupancy_grid, start_indices=[300, 300], end_indices=[500,500], scale=13) # scale = 6
   generate_yaml_path(yaml)
-  """
-  # MAP 2
+  
+  # MAP 2 - Turtlebot World
 
   plt.axis('equal')
   plt.xlabel('x')
@@ -664,7 +667,7 @@ if __name__ == '__main__':
   inst, yaml = cpp(START_POSE_2, occupancy_grid, start_indices=[160, 160], end_indices=[400, 400], scale=15)
   generate_yaml_path(yaml)
   
-  # MAP 3
+  # MAP 3 - IIB Project
   
   plt.axis('equal')
   plt.xlabel('x')
@@ -672,10 +675,24 @@ if __name__ == '__main__':
   plt.xlim([-1., 1.])
   plt.ylim([-1., 1.])
   
-  print(occupancy_grid.get_index([-0.7, -0.61]))
-  print(occupancy_grid.get_index([0.7, 0.62]))
+  print(occupancy_grid.get_index([-0.77, -0.7]))
+  print(occupancy_grid.get_index([0.71, 0.75]))
 
-  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[188, 188], end_indices=[218, 218], scale=3)
+  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[370, 370], end_indices=[430, 430], scale=10)
   generate_yaml_path(yaml)
   """
+  # MAP 4 - IIB Test
+  
+  plt.axis('equal')
+  plt.xlabel('x')
+  plt.ylabel('y')
+  plt.xlim([-1., 1.])
+  plt.ylim([-1., 1.])
+  
+  print(occupancy_grid.get_index([-0.77, -0.7]))
+  print(occupancy_grid.get_index([0.71, 0.75]))
+
+  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[370, 370], end_indices=[430, 430], scale=7)
+  generate_yaml_path(yaml)
+  
   plt.show()

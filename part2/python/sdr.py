@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 # Quick setup guide:
 # https://github.com/roger-/pyrtlsdr
 
-sdr = RtlSdr()
+#sdr = RtlSdr()
+sdr = RtlSdrTcpClient(hostname='192.168.102.210', port=55366)
 
 # Configure device
 sdr.sample_rate = 1e6  # Hz

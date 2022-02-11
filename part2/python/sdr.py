@@ -9,15 +9,18 @@ import matplotlib.pyplot as plt
 # Quick setup guide:
 # https://github.com/roger-/pyrtlsdr
 
-#sdr = RtlSdr()
-sdr = RtlSdrTcpClient(hostname='192.168.102.210', port=55366)
+
+# SDR attached to computer
+sdr = RtlSdr()
+# SDR attached to Raspberry Pi
+#sdr = RtlSdrTcpClient(hostname='192.168.102.210', port=55366)
 
 # Configure device
 sdr.sample_rate = 1e6  # Hz
-sdr.center_freq = 70e6     # Hz
+sdr.center_freq = 915e6     # Hz
 sdr.freq_correction = 60   # PPM
 sdr.gain = 'auto'
-num_samples = 512
+num_samples = 256*1024
 
 samples = sdr.read_samples(num_samples)
 

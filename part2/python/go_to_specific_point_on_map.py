@@ -37,7 +37,7 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-ROBOT_RADIUS = 0.21 / 2.
+ROBOT_RADIUS = 0.23 / 2.
 pose_offset = [-0.03, 0., 3.12]
 
 

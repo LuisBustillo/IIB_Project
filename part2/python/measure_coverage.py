@@ -9,20 +9,20 @@ from gazebo_msgs.msg import LinkStates
 from geometry_msgs.msg import Pose
 
 class MeasureAreaCovered:
-    link_name = 'turtlebot3_burger::base_footprint'
-    tool_radius = 0.2
-    current_pose = Pose()
-    last_pose = Pose()
-    area_covered = 0
-    area_duplicated = 0
-    dist_traveled = 0
-    first = True
-    block_constraints = []
-    average_speed = 0
-    time = 0
 
     def __init__(self):
-        pass
+        self.link_name = 'turtlebot3_burger::base_footprint'
+        self.tool_radius = 0.2
+        self.current_pose = Pose()
+        self.last_pose = Pose()
+        self.area_covered = 0
+        self.area_duplicated = 0
+        self.dist_traveled = 0
+        self.first = True
+        self.block_constraints = []
+        self.average_speed = 0
+        self.time = 0
+
         self.link_name_rectified = self.link_name.replace("::", "_")
 
         if not self.link_name:
@@ -52,7 +52,7 @@ class MeasureAreaCovered:
         return math.sqrt(abs(x1 - x2) ** 2 + abs(y1-y2) ** 2)
 
     def disp(self):
-        print("dist", self.dist_traveled, "time", self.time, "speed", self.average_speed)
+        print("dist", self.dist_traveled, "time", self.time, "speed", self.average_speed, "area", self.area_covered)
 
     def calculate_corners(self, pose, last_pose, radius):
         corners = []

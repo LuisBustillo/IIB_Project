@@ -5,13 +5,14 @@ from cpp import draw_nodes
 from scipy.interpolate import griddata
 
 # Read information from yaml file
-with open("./route.yaml", 'r') as stream:
+with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/data.yaml", 'r') as stream:
   dataMap = yaml.safe_load(stream)
 
 output = []
 path = []
 for obj in dataMap:
-    val = np.random.uniform(0, 3.3)
+    #val = np.random.uniform(0, 3.3)
+    val = obj['power']
     path.append(np.array([obj['position']['x'], obj['position']['y']]))
     output.append(np.array([obj['position']['x'], obj['position']['y'], val]))
 

@@ -25,7 +25,7 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-ROBOT_RADIUS = 0.21 / 2.
+ROBOT_RADIUS = 0.23 / 2.
 
 START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
@@ -56,40 +56,57 @@ def draw_grid(x_start, x_end, y_start, y_end, spacing_x, spacing_y):
 def area_covered(occupancy_grid, positions):
     """
     Estimates the percentage of an area the robot has covered from the robot dimensions and its x,y position
-    Robot occupies 9 cells at any given time
+    Robot occupies a square of cells DxD large at any given time
 
     occupancy_grid: Occupancy_grid object 
     positions: list of tuples of x,y positions
     """
 
-    #TODO convert list of x,y points into list of 3x3 grid occupied by robot
+    #TODO convert list of x,y points into list of DxD grid occupied by robot
     #TODO remove duplicates from visited cell list
 
     free_area = 0
     for row in occupancy_grid.values:
-        for element in row:
+      for element in row:
             if element == FREE:
                 free_area += 1  
 
     total_area = (occupancy_grid.resolution**2)*free_area     # free area in m^2
     
-    visited_map = np.zeros_like(occupancy_grid.values)
+    visited_map = occupancy_grid.values
 
     for position in positions:
-        idx = occupancy_grid.get_index(position)
-        visited_map[idx[0], idx[1]] = 1
+        point_idx = occupancy_grid.get_index(position)
+        corners = [(position[0] - ROBOT_RADIUS, position[1] - ROBOT_RADIUS),
+                  (position[0] - ROBOT_RADIUS, position[1] + ROBOT_RADIUS),
+                  (position[0] + ROBOT_RADIUS, position[1] - ROBOT_RADIUS),
+                  (position[0] + ROBOT_RADIUS, position[1] + ROBOT_RADIUS)]
+        
+        corner_indices = []
+        for corner in corners:
+            corner_indices.append(occupancy_grid.get_index(corner))
+        
+        for i in range(corner_indices[0][0], corner_indices[3][0] + 1):
+            for j in range(corner_indices[0][1], corner_indices[3][1] + 1):
+                if visited_map[i, j] == FREE:
+                  visited_map[i, j] = -1
+                
+                #TODO Look at duplicate areas
+                # else:
+                #   visited_map[i, j] += 1
     
     visited_area = 0
     for row in visited_map:
         for element in row:
-            if element == 1:
+            if element == -1:
                 visited_area += 1  
 
     covered_area = (occupancy_grid.resolution**2)*visited_area     # visited area in m^2
 
     percentage_covered = 100*(covered_area/total_area)
 
-    return percentage_covered
+    return visited_map, percentage_covered
+
 
 def find_circle(node_a, node_b):
   def perpendicular(v):
@@ -682,7 +699,15 @@ if __name__ == '__main__':
 
   inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[900, 900], end_indices=[1100, 1100], scale=5)
   # start_indices=[370, 370], end_indices=[430, 430], scale=10 for res of 0.025
-  generate_yaml_path(yaml)
+
+  for point in yaml:
+    POSITIONS.append((point[0], point[1]))
+
+  visited, percentage = area_covered(occupancy_grid, POSITIONS)
+  print(percentage)
+  plt.matshow(np.rot90(visited,1))
+  #generate_yaml_path(yaml)
+    
   """
   # MAP 4 - IIB Test
   

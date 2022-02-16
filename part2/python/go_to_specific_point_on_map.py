@@ -37,7 +37,8 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-ROBOT_RADIUS = 0.15 / 2.
+ROBOT_RADIUS = 0.21 / 2.
+pose_offset = [-0.03, 0., 3.12]
 
 
 #TODO Edit GoToPose so that pose estimates come from slam/lidar not odometry

@@ -40,7 +40,6 @@ OCCUPIED = 2
 ROBOT_RADIUS = 0.23 / 2.
 pose_offset = [-0.03, 0., 3.12]
 
-
 class SLAM(object):
   def __init__(self):
     rospy.Subscriber('/map', OccupancyGrid, self.callback)
@@ -121,6 +120,7 @@ class GoToPose():
         self.tf_listener = tf.TransformListener()
         self.odom_frame= 'odom'
         self.slam = SLAM()
+        self.positions = []
 
         self.r.sleep()
         try:
@@ -150,6 +150,9 @@ class GoToPose():
         #(self.position, rotation) = self.get_odom()
         self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
         rotation = self.slam.pose[YAW]
+
+        self.positions.append((self.position.x, self.position.y))
+
         last_rotation = 0
         linear_speed = 0.03
         angular_speed = 0.3
@@ -170,6 +173,9 @@ class GoToPose():
             #(self.position, rotation) = self.get_odom()
             self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
             rotation = self.slam.pose[YAW]
+
+            self.positions.append((self.position.x, self.position.y))
+
             x_start = self.position.x
             y_start = self.position.y
 
@@ -212,6 +218,7 @@ class GoToPose():
                 self.slam.update()
                 self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
                 rotation = self.slam.pose[YAW]
+
                 if goal_z >= 0:
                     if rotation <= goal_z and rotation >= goal_z - pi:
                         self.move_cmd.linear.x = 0.00
@@ -228,7 +235,10 @@ class GoToPose():
                         self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.5)
                 self.cmd_vel.publish(self.move_cmd)
 
-        print(self.position.x, self.position.y, rotation)
+        # print(self.position.x, self.position.y, rotation)
+
+        self.positions.append((self.position.x, self.position.y))
+
         rospy.loginfo("point reached")
         self.cmd_vel.publish(Twist())
 
@@ -243,6 +253,14 @@ class GoToPose():
 
         return (Point(*trans), rotation[2])
 
+
+    def generate_path(self):
+      with open('/home/luis/catkin_ws/src/IIB_Project/part2/ros/path.yaml', 'w') as f:
+          index = 0
+          for point in self.positions:
+            index += 1    
+            print("- {filename: 'p%s', position: { x: %s, y: %s} }" % (index, point[0], point[1]), file = f)
+            print(" Path File Generated")
 
     def shutdown(self):
         self.cmd_vel.publish(Twist())

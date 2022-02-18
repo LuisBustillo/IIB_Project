@@ -10,6 +10,10 @@ import yaml
 from pylab import *
 from rtlsdr import *
 
+X = 0
+Y = 1
+YAW = 2
+
 # Import code rather than copy-pasting.
 directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python')
 sys.path.insert(0, directory)
@@ -49,7 +53,7 @@ if __name__ == '__main__':
         # Initialize
         rospy.init_node('follow_route', anonymous=False)
         navigator = Nav.GoToPose()
-        #slam = Nav.SLAM()
+        sdr_slam = Nav.SLAM()
 
         sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
         SDR.configure_device(sdr, center_freq=914e6)
@@ -69,21 +73,27 @@ if __name__ == '__main__':
                 rospy.loginfo("Go to %s pose", name[:-4])
                 navigator.goto(obj['position'], obj['rotation'])
                 #rospy.loginfo("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Reached %s pose", name[:-4])
+                
+                # Measure sample location
+                sdr_slam.update()
+                sdr_pose = (sdr_slam.pose[X], sdr_slam.pose[Y])
+                print(sdr_pose)
 
                 # Measure and calculate RF signal power
                 samples = SDR.receive_samples(sdr)
-                max_power, _ = SDR.calc_max_power(samples)
-                max_power_dB = SDR.dB(max_power)
+                max_power, _ = SDR.get_power_from_PSD(samples, sdr, freq=915.1e6, plot=False)
 
-                data.append(np.array([obj['position']['x'], obj['position']['y'], max_power_dB]))
+                data.append(np.array([sdr_pose[X], sdr_pose[Y], max_power]))
 
             except Exception as exc:
                 print(exc)
 
         generate_rf_data(data)
+        navigator.generate_path()
         # m.disp()
 
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Ctrl-C caught. Quitting")
         generate_rf_data(data)
+        navigator.generate_path()

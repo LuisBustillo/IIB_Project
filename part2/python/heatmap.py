@@ -87,18 +87,30 @@ plt.show()
 
 if __name__ == '__main__':
 
-  # Read information from yaml file
+  # Read information from yaml files
+
+  # RF DATA
   #with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/data.yaml", 'r') as stream:
   with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\data.yaml", 'r') as stream:
     dataMap = yaml.safe_load(stream)
 
   # Process information from yaml file
   output = []
-  path = []
   for obj in dataMap:
     power = obj['power']
-    path.append(np.array([obj['position']['x'], obj['position']['y']]))
     output.append(np.array([obj['position']['x'], obj['position']['y'], power]))
+
+  # PATH DATA
+  #with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/path.yaml", 'r') as stream:
+  with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\path.yaml", 'r') as stream2:
+    PathMap = yaml.safe_load(stream2)
+
+  # Process information from yaml file
+  path = []
+  for obj in PathMap:
+    power = obj['power']
+    path.append(np.array([obj['position']['x'], obj['position']['y']]))
+    
 
   # Draw Contour Heatmap
   

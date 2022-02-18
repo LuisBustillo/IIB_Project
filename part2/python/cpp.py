@@ -32,7 +32,6 @@ START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
 START_POSE_3 = np.array([-0.03, 0., 3.12], dtype=np.float32)
 START_POSE_4 = np.array([-0.03, 0., 3.12], dtype=np.float32)
-POSITIONS = []
 
 # Hepler Functions
 
@@ -181,7 +180,7 @@ def generate_yaml_path(path_points):
         for point in path_points:
           index += 1    
           print("- {filename: 'p%s', position: { x: %s, y: %s}, rotation: %s}" % (index, point[0], point[1], point[2]), file = f)
-      print("File generated!")
+      print("Route file generated!")
 
 # Defines a node of the graph.
 class Node(object):

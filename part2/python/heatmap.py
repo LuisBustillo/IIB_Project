@@ -29,9 +29,11 @@ y = [point[1] for point in output]
 z = [point[2] for point in output]
 
 #TODO PADDING FOR CONTOUR PERIMITER
+"""
 x += [-.8, -.8, .8, .8]
 y += [.75, -.75, .75, -.75]
 z += [0, 0, 0, 0]
+"""
 
 #fig, (ax1, ax2) = plt.subplots(nrows=2)
 fig, ax1 = plt.subplots()
@@ -60,7 +62,7 @@ zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='cubic')    # method
 ax1.contour(xi, yi, zi, levels=10, linewidths=0.5, colors='k')
 cntr1 = ax1.contourf(xi, yi, zi, levels=10, cmap="viridis")
 
-fig.colorbar(cntr1, ax=ax1, label='Volatge (V)')
+fig.colorbar(cntr1, ax=ax1, label='Signal Power (dB)')
 ax1.plot(x, y, 'r+', ms=3)
 ax1.set(xlim=(-1, 1), ylim=(-1, 1))
 ax1.set_title('RF Field Strength')
@@ -84,6 +86,6 @@ ax2.set_title('RF 2')
 
 plt.subplots_adjust(hspace=0.5)
 
-"""
 
+"""
 plt.show()

@@ -32,6 +32,7 @@ def receive_samples(sdr, num_samples=256*1024):
 def close_connection(sdr):
     sdr.close()
 
+#TODO get max power from PSD
 def calc_max_power(samples):
 
     max_pwr = 0
@@ -41,6 +42,7 @@ def calc_max_power(samples):
         if power >= max_pwr:
             max_pwr = power
             max_pwr_idx = idx
+
     return max_pwr, max_pwr_idx
 
 def calc_power_range(samples, range=0.00001):
@@ -89,7 +91,9 @@ def dB(pwr):
 
 if __name__ == '__main__':
     
-    sdr = RtlSdr()
+    #sdr = RtlSdr()
+    sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
+
     configure_device(sdr)
 
     samples = receive_samples(sdr)

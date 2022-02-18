@@ -22,10 +22,13 @@ except ImportError:
   raise ImportError('Unable to import functions. Make sure this file is in "{}"'.format(directory))
 
 # Write Information to YAML file
-def add_rf_data(point, power, index):
+def generate_rf_data(point_list):
       with open('data.yaml', 'w') as f:
-        index += 1    
-        print("- {filename: 'p%s', position: { x: %s, y: %s}, rotation: %s}" % (index, point['x'], point['y'], power), file = f)
+          index = 0
+          for point in point_list:
+            index += 1    
+            print("- {filename: 'p%s', position: { x: %s, y: %s}, power: %s}" % (index, point[0], point[1], point[2]), file = f)
+            print(" RF Data File Generated")
       
 def handler(signum, frmae):
     raise Exception("Unable to reach pose :(")
@@ -48,11 +51,11 @@ if __name__ == '__main__':
         navigator = Nav.GoToPose()
         #slam = Nav.SLAM()
 
-        sdr = RtlSdrTcpClient(hostname='192.168.102.210', port=55366)
+        sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
         SDR.configure_device(sdr)
-
-        data_index = 0
         
+        data = []
+
         for obj in dataMap:
 
             if rospy.is_shutdown():
@@ -60,7 +63,7 @@ if __name__ == '__main__':
             name = obj['filename']
             print(obj)
             signal.signal(signal.SIGALRM, handler)
-            signal.alarm(25)
+            signal.alarm(35)
             # Navigation
             try:
                 rospy.loginfo("Go to %s pose", name[:-4])
@@ -72,14 +75,15 @@ if __name__ == '__main__':
                 max_power, _ = SDR.calc_max_power(samples)
                 max_power_dB = SDR.dB(max_power)
 
-                add_rf_data(obj['position'], max_power_dB, data_index)
+                data.append(np.array([obj['position']['x'], obj['position']['y'], max_power_dB]))
 
             except Exception as exc:
                 print(exc)
 
-
+        generate_rf_data(data)
         # m.disp()
 
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Ctrl-C caught. Quitting")
+        generate_rf_data(data)

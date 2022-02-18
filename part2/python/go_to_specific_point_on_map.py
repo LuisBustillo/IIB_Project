@@ -165,7 +165,7 @@ class GoToPose():
 
         print("goal", goal_x, goal_y, goal_z)
 
-        while distance > 0.03:
+        while distance > 0.02:
             if not self.slam.ready:
               self.r.sleep()
               continue

@@ -30,7 +30,7 @@ ROBOT_RADIUS = 0.23 / 2.
 START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
 START_POSE_3 = np.array([-0.03, 0., 3.12], dtype=np.float32)
-START_POSE_4 = np.array([0.4, -0.03, -0.19], dtype=np.float32)
+START_POSE_4 = np.array([-0.03, 0., 3.12], dtype=np.float32)
 POSITIONS = []
 
 
@@ -685,7 +685,7 @@ if __name__ == '__main__':
 
   inst, yaml = cpp(START_POSE_2, occupancy_grid, start_indices=[160, 160], end_indices=[400, 400], scale=15)
   generate_yaml_path(yaml)
-  """
+  
   # MAP 3 - IIB Project
   
   plt.axis('equal')
@@ -720,7 +720,7 @@ if __name__ == '__main__':
   print(occupancy_grid.get_index([-0.77, -0.7]))
   print(occupancy_grid.get_index([0.71, 0.75]))
 
-  inst, yaml = cpp(START_POSE_4, occupancy_grid, start_indices=[370, 370], end_indices=[430, 430], scale=7)
+  inst, yaml = cpp(START_POSE_4, occupancy_grid, start_indices=[920, 920], end_indices=[1080, 1080], scale=10)
   generate_yaml_path(yaml)
-  """
+  
   plt.show()

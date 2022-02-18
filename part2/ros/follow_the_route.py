@@ -52,7 +52,7 @@ if __name__ == '__main__':
         #slam = Nav.SLAM()
 
         sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
-        SDR.configure_device(sdr)
+        SDR.configure_device(sdr, center_freq=914e6)
         
         data = []
 

@@ -9,14 +9,8 @@ import matplotlib.pyplot as plt
 # Quick setup guide:
 # https://github.com/roger-/pyrtlsdr
 
-
-# SDR attached to computer
-# sdr = RtlSdr()
-# SDR attached to Raspberry Pi
-#sdr = RtlSdrTcpClient(hostname='192.168.102.210', port=55366)
-
 # Configure device
-def configure_device(sdr, sample_rate=2.4e6, center_freq=915e6):
+def configure_device(sdr, sample_rate=2.4e6, center_freq=914e6):
     
     sdr.sample_rate = sample_rate  
     sdr.center_freq = center_freq     
@@ -32,31 +26,92 @@ def receive_samples(sdr, num_samples=256*1024):
 def close_connection(sdr):
     sdr.close()
 
-#TODO get max power from PSD
-def calc_max_power(samples):
 
-    max_pwr = 0
-    max_pwr_idx = 0
-    for idx, sample in enumerate(samples):
-        power = np.abs(sample)**2
-        if power >= max_pwr:
-            max_pwr = power
-            max_pwr_idx = idx
+# dB Conversion
+# avg_pwr = 10*np.log10(avg_pwr) # in dB
+# avg_pwr = 10*np.log10(avg_pwr/1e-3)  # in dBm
 
-    return max_pwr, max_pwr_idx
+def dB(pwr):
+    return 10*np.log10(pwr)
 
-def calc_power_range(samples, range=0.00001):
+# Helper Functions
 
-    num = len(samples)
-    _ , max_pwr_idx = calc_max_power(samples)
+def GetSpacedElements(arr, numElems, returnIndices=False):
+    indices = np.round(np.linspace(0, len(arr) - 1, numElems)).astype(int)
+    values = arr[indices]
+    return (values, indices) if returnIndices else (values)
+
+def find_closest_index(arr, val):
+    diff = 1e9
+    closest_idx = 0
+    for idx in range(len(arr)):
+       
+        if abs(arr[idx] - val) < diff:
+            diff = abs(arr[idx] - val)
+            closest_idx = idx
+
+    return closest_idx
+
+# Calculating Max power and signal power at specific frequency from PSD
+def get_power_from_PSD(samples, sdr, freq, plot=False):
+
+    # Use matplotlib to estimate and plot the PSD
+    Pxx, freqs = psd(samples, NFFT=1024, Fs=sdr.sample_rate/1e6, Fc=sdr.center_freq/1e6)
     
-    # Select % range centered at highest power reading for calculation
-    max_idx = int(max_pwr_idx + np.floor((range/2)*num))
-    min_idx = int(max_pwr_idx - np.floor((range/2)*num))
-    
-    pwr_samples = samples[min_idx:max_idx]
+    f = freq/1e6
+    f_idx = find_closest_index(freqs, f)
 
-    return np.mean(np.abs(pwr_samples)**2)
+    power_at_freq = dB(Pxx[f_idx])
+    max_power = dB(max(Pxx))
+
+    if plot:
+        xlabel('Frequency (MHz)')
+        ylabel('Relative power (dB)')
+        show()
+
+    return max_power, power_at_freq
+
+
+# Signal power measurements from received samples
+
+def power_for_range(samples, sdr, min_freq, max_freq):
+
+    Pxx, freqs = psd(samples, NFFT=1024, Fs=sdr.sample_rate/1e6, Fc=sdr.center_freq/1e6)
+    
+    min_idx = find_closest_index(freqs, min_freq/1e6)
+    max_idx = find_closest_index(freqs, max_freq/1e6)
+    
+    pwr_samples = Pxx[min_idx:max_idx]
+    pwr_range = np.mean(np.abs(pwr_samples)**2)
+
+    return pwr_range
+
+
+# Low-level PSD plotting implementation
+
+def plot_PSD(sdr, samples):
+
+    Fs = sdr.sample_rate # lets say we sampled at 1 MHz
+    # Assume samples contains your array of IQ samples
+    N = 1024
+    # N = len(samples)
+    # samples = samples[0:N] # we will only take the FFT of the first N samples
+    samples = GetSpacedElements(samples, N)
+    samples = samples * np.hamming(len(samples)) # apply a Hamming window
+    PSD = (np.abs(np.fft.fft(samples))/N)**2
+    PSD_log = 10.0*np.log10(PSD)
+    PSD_shifted = np.fft.fftshift(PSD_log)
+
+    center_freq = sdr.center_freq # frequency we tuned our SDR to
+    f = np.arange(Fs/-2.0, Fs/2.0, Fs/N) # start, stop, step.  centered around 0 Hz
+    f += center_freq # now add center frequency
+    plt.plot(f, PSD_shifted)
+
+    plt.xlabel("Frequency [Hz]")
+    plt.ylabel("Magnitude [dB]")
+    plt.grid(True)
+
+    plt.show()
 
 def power_for_frequency_range(samples, sample_rate, center_freq, min_freq, max_freq):
 
@@ -81,73 +136,36 @@ def power_for_frequency_range(samples, sample_rate, center_freq, min_freq, max_f
 
     return np.mean(np.abs(pwr_samples)**2)
 
-# dB Conversion
-# avg_pwr = 10*np.log10(avg_pwr) # in dB
-# avg_pwr = 10*np.log10(avg_pwr/1e-3)  # in dBm
-
-def dB(pwr):
-    return 10*np.log10(pwr)
-
 
 if __name__ == '__main__':
     
-    #sdr = RtlSdr()
-    sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
-
-    configure_device(sdr)
+    # SDR attached to computer
+    sdr = RtlSdr()
+    # SDR attached to Raspberry Pi
+    # sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
+    
+    configure_device(sdr, center_freq=95e6)
 
     samples = receive_samples(sdr)
 
-
     # close_connection(sdr)
+
+    measurment_freq = 96e6
 
     # Calculate Average signal power
     avg_pwr = np.mean(np.abs(samples)**2)   # Watts
-
-    max_power, _ = calc_max_power(samples)
-
-    rel_strength = max_power/avg_pwr
     # If signal havs roughly zero mean
     # avg_pwr = np.var(samples) 
+    
+    # Measurments from PSD
 
-    print("Signal Power centered on max = {} dB".format(dB(calc_power_range(samples))))
-    print("Signal Power for freqency range between {} and {} MHz = {} dB".format(
-    95, 97, dB(power_for_frequency_range(samples, sample_rate=2.4e6, center_freq=915e6,
-    min_freq=914e6, max_freq=916e6))))
+    max_power, power_at_freq = get_power_from_PSD(samples, sdr, freq=measurment_freq, plot=True)
+
+    #print("Signal Power for freqency range between {} and {} MHz = {} dB".format(95, 97, dB(power_for_frequency_range(samples, sample_rate=2.4e6, center_freq=915e6, min_freq=914e6, max_freq=916e6))))
     print("Average signal Power = {} dB".format(dB(avg_pwr)))
-    print("Max signal Power = {} dB".format(dB(max_power)))
-    print("Relative strength Factor = {}".format(rel_strength))
-    print("Relative Power gain = {} dB".format(10*np.log10(max_power/avg_pwr)))
+    print("Max signal Power = {} dB".format(max_power))
+    print("Signal Power at {} MHz = {} dB".format(measurment_freq/1e6, power_at_freq))
+    #print("Relative strength Factor = {}".format(rel_strength))
+    #print("Relative Power gain = {} dB".format(10*np.log10(max_power/avg_pwr)))
 
-
-    # Use matplotlib to estimate and plot the PSD
-
-
-    psd(samples, NFFT=1024, Fs=sdr.sample_rate/1e6, Fc=sdr.center_freq/1e6)
-    xlabel('Frequency (MHz)')
-    ylabel('Relative power (dB)')
-
-    show()
-
-
-    """
-    Fs = sdr.sample_rate # lets say we sampled at 1 MHz
-    # Assume x contains your array of IQ samples
-    N = 512
-    samples = samples[0:N] # we will only take the FFT of the first N samples 
-    samples = samples * np.hamming(len(samples)) # apply a Hamming window
-    PSD = (np.abs(np.fft.fft(samples))/N)**2
-    PSD_log = 10.0*np.log10(PSD)
-    PSD_shifted = np.fft.fftshift(PSD_log)
-
-    center_freq = sdr.center_freq # frequency we tuned our SDR to
-    f = np.arange(Fs/-2.0, Fs/2.0, Fs/N) # start, stop, step.  centered around 0 Hz
-    f += center_freq # now add center frequency
-    plt.plot(f, PSD_shifted)
-
-    plt.xlabel("Frequency [Hz]")
-    plt.ylabel("Magnitude [dB]")
-    plt.grid(True)
-
-    plt.show()
-    """
+    

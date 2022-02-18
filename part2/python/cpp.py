@@ -14,6 +14,7 @@ import scipy.signal
 import yaml
 import cv2
 from stc import stc
+from occupancy_grid import*
 
 # Constants used for indexing.
 X = 0
@@ -33,27 +34,9 @@ START_POSE_3 = np.array([-0.03, 0., 3.12], dtype=np.float32)
 START_POSE_4 = np.array([-0.03, 0., 3.12], dtype=np.float32)
 POSITIONS = []
 
-
-# Constants for node grid
-HEIGHT = [-1.8, 1.8]
-WIDTH = [-1.8, 1.8]
-SPACING = [0.5, 0.5]
-
-def draw_grid(x_start, x_end, y_start, y_end, spacing_x, spacing_y):
-    num_x = int((x_end -x_start)/spacing_x)
-    num_y = int((y_end -y_start)/spacing_y)
-
-    x = np.tile(np.linspace(x_start, x_end, num_x), num_y)
-    y = np.repeat(np.linspace(x_start, x_end, num_x), num_y)
-
-    plt.scatter(x, y, s=2, c='b')
-
-# Drawing grid of x,y points
-#draw_grid(WIDTH[0], WIDTH[1], HEIGHT[0], HEIGHT[1], SPACING[0], SPACING[1])
-
 # Hepler Functions
 
-def area_covered(occupancy_grid, positions):
+def area_covered(occupancy_grid, positions, robot_radius, duplicates=False):
     """
     Estimates the percentage of an area the robot has covered from the robot dimensions and its x,y position
     Robot occupies a square of cells DxD large at any given time
@@ -66,21 +49,22 @@ def area_covered(occupancy_grid, positions):
     #TODO remove duplicates from visited cell list
 
     free_area = 0
-    for row in occupancy_grid.values:
+    for row in occupancy_grid._original_values:
       for element in row:
             if element == FREE:
                 free_area += 1  
 
     total_area = (occupancy_grid.resolution**2)*free_area     # free area in m^2
     
-    visited_map = occupancy_grid.values
+    visited_map = occupancy_grid.values_trajectory.copy()
+    visited_map_duplicates = occupancy_grid.values_trajectory.copy()
 
     for position in positions:
         point_idx = occupancy_grid.get_index(position)
-        corners = [(position[0] - ROBOT_RADIUS, position[1] - ROBOT_RADIUS),
-                  (position[0] - ROBOT_RADIUS, position[1] + ROBOT_RADIUS),
-                  (position[0] + ROBOT_RADIUS, position[1] - ROBOT_RADIUS),
-                  (position[0] + ROBOT_RADIUS, position[1] + ROBOT_RADIUS)]
+        corners = [(position[0] - robot_radius, position[1] - robot_radius),
+                  (position[0] - robot_radius, position[1] + robot_radius),
+                  (position[0] + robot_radius, position[1] - robot_radius),
+                  (position[0] + robot_radius, position[1] + robot_radius)]
         
         corner_indices = []
         for corner in corners:
@@ -90,10 +74,10 @@ def area_covered(occupancy_grid, positions):
             for j in range(corner_indices[0][1], corner_indices[3][1] + 1):
                 if visited_map[i, j] == FREE:
                   visited_map[i, j] = -1
+                  visited_map_duplicates[i, j] = -1
                 
-                #TODO Look at duplicate areas
-                # else:
-                #   visited_map[i, j] += 1
+                else:
+                  visited_map_duplicates[i, j] -= 1
     
     visited_area = 0
     for row in visited_map:
@@ -105,8 +89,16 @@ def area_covered(occupancy_grid, positions):
 
     percentage_covered = 100*(covered_area/total_area)
 
-    return visited_map, percentage_covered
+    if duplicates:
+      for i in range((occupancy_grid.values_trajectory).shape[0]):
+        for j in range((occupancy_grid.values_trajectory).shape[1]):
+          if visited_map_duplicates[i, j] < 0:
+            occupancy_grid.values_trajectory[i, j] = visited_map_duplicates[i, j]
 
+    else:
+      occupancy_grid.values_trajectory[visited_map == -1] = -2
+
+    return percentage_covered
 
 def find_circle(node_a, node_b):
   def perpendicular(v):
@@ -190,61 +182,6 @@ def generate_yaml_path(path_points):
           index += 1    
           print("- {filename: 'p%s', position: { x: %s, y: %s}, rotation: %s}" % (index, point[0], point[1], point[2]), file = f)
       print("File generated!")
-
-# Defines an occupancy grid.
-class OccupancyGrid(object):
-  def __init__(self, values, origin, resolution):
-    self._original_values = values.copy()
-    self._values = values.copy()
-    # Inflate obstacles (using a convolution).
-    inflated_grid = np.zeros_like(values)
-    inflated_grid[values == OCCUPIED] = 1.
-    w = 2 * int(ROBOT_RADIUS / resolution) + 1
-    inflated_grid = scipy.signal.convolve2d(inflated_grid, np.ones((w, w)), mode='same')
-    self._values[inflated_grid > 0.] = OCCUPIED
-    self._origin = np.array(origin[:2], dtype=np.float32)
-    self._origin -= resolution / 2.
-    assert origin[YAW] == 0.
-    self._resolution = resolution
-
-  @property
-  def values(self):
-    return self._values
-
-  @property
-  def resolution(self):
-    return self._resolution
-
-  @property
-  def origin(self):
-    return self._origin
-
-  def draw(self):
-    plt.imshow(self._original_values.T, interpolation='none', origin='lower',
-               extent=[self._origin[X],
-                       self._origin[X] + self._values.shape[0] * self._resolution,
-                       self._origin[Y],
-                       self._origin[Y] + self._values.shape[1] * self._resolution])
-    plt.set_cmap('gray_r')
-
-  def get_index(self, position):
-    idx = ((position - self._origin) / self._resolution).astype(np.int32)
-    if len(idx.shape) == 2:
-      idx[:, 0] = np.clip(idx[:, 0], 0, self._values.shape[0] - 1)
-      idx[:, 1] = np.clip(idx[:, 1], 0, self._values.shape[1] - 1)
-      return (idx[:, 0], idx[:, 1])
-    idx[0] = np.clip(idx[0], 0, self._values.shape[0] - 1)
-    idx[1] = np.clip(idx[1], 0, self._values.shape[1] - 1)
-    return tuple(idx)
-
-  def get_position(self, i, j):
-    return np.array([i, j], dtype=np.float32) * self._resolution + self._origin
-
-  def is_occupied(self, position):
-    return self._values[self.get_index(position)] == OCCUPIED
-
-  def is_free(self, position):
-    return self._values[self.get_index(position)] == FREE
 
 # Defines a node of the graph.
 class Node(object):
@@ -440,7 +377,6 @@ def prm(start_pose, occupancy_grid, N=80):
 
     return visited
 
-
 def cpp(start_pose, occupancy_grid, start_indices=[155, 155], end_indices=[245,245], scale=6):
     
     unpad = np.zeros_like(occupancy_grid.values)
@@ -574,28 +510,6 @@ def cpp(start_pose, occupancy_grid, start_indices=[155, 155], end_indices=[245,2
     
     return instruction_list(coord_path, initial_yaw)
 
-def read_pgm(filename, byteorder='>'):
-  """Read PGM file."""
-  with open(filename, 'rb') as fp:
-    buf = fp.read()
-  try:
-    header, width, height, maxval = re.search(
-        b'(^P5\s(?:\s*#.*[\r\n])*'
-        b'(\d+)\s(?:\s*#.*[\r\n])*'
-        b'(\d+)\s(?:\s*#.*[\r\n])*'
-        b'(\d+)\s(?:\s*#.*[\r\n]\s)*)', buf).groups()
-  except AttributeError:
-    raise ValueError('Invalid PGM file: "{}"'.format(filename))
-  maxval = int(maxval)
-  height = int(height)
-  width = int(width)
-  img = np.frombuffer(buf,
-                      dtype='u1' if maxval < 256 else byteorder + 'u2',
-                      count=width * height,
-                      offset=len(header)).reshape((height, width))
-  return img.astype(np.float32) / 255.
-
-
 def draw_solution(points):
   ax = plt.gca()
 
@@ -639,24 +553,6 @@ def draw_solution(points):
 
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Uses cpp to reach the goal.')
-  parser.add_argument('--map', action='store', default='map', help='Which map to use.')
-  args, unknown = parser.parse_known_args()
-
-  # Load map.
-  with open(args.map + '.yaml') as fp:
-    data = yaml.safe_load(fp)
-  img = read_pgm(os.path.join(os.path.dirname(args.map), data['image']))
-  occupancy_grid = np.empty_like(img, dtype=np.int8)
-  occupancy_grid[:] = UNKNOWN
-  occupancy_grid[img < .1] = OCCUPIED
-  occupancy_grid[img > .9] = FREE
-  # Transpose (undo ROS processing).
-  occupancy_grid = occupancy_grid.T
-  # Invert Y-axis.
-  occupancy_grid = occupancy_grid[:, ::-1]
-  occupancy_grid = OccupancyGrid(occupancy_grid, data['origin'], data['resolution'])
-
   
   # Plot environment.
   
@@ -699,13 +595,6 @@ if __name__ == '__main__':
 
   inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[900, 900], end_indices=[1100, 1100], scale=5)
   # start_indices=[370, 370], end_indices=[430, 430], scale=10 for res of 0.025
-
-  for point in yaml:
-    POSITIONS.append((point[0], point[1]))
-
-  visited, percentage = area_covered(occupancy_grid, POSITIONS)
-  print(percentage)
-  plt.matshow(np.rot90(visited,1))
   #generate_yaml_path(yaml)
     
   """

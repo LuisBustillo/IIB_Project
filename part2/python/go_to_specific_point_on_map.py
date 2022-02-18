@@ -41,11 +41,6 @@ ROBOT_RADIUS = 0.23 / 2.
 pose_offset = [-0.03, 0., 3.12]
 
 
-#TODO Edit GoToPose so that pose estimates come from slam/lidar not odometry
-#TODO Make each new position a GoalPose object
-#TODO Add remaining elements from run() function in cpp_navigation and rtt_navigation
-# to follow_the_route.py
-
 class SLAM(object):
   def __init__(self):
     rospy.Subscriber('/map', OccupancyGrid, self.callback)

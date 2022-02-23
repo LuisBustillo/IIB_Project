@@ -23,5 +23,5 @@ for i in range(100):
 sdr.tx_cyclic_buffer = True # Enable cyclic buffers
 sdr.tx(samples)
 
-sdr.tx_destroy_buffer() # Destroy cyclic buffer
+#sdr.tx_destroy_buffer() # Destroy cyclic buffer
 # sdr.tx(samples)

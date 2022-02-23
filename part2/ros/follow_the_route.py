@@ -6,9 +6,10 @@ import numpy as np
 import signal
 import rospy
 import yaml
+import time
 
-from pylab import *
-from rtlsdr import *
+#from pylab import *
+#from rtlsdr import *
 
 X = 0
 Y = 1
@@ -19,6 +20,7 @@ directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../python
 sys.path.insert(0, directory)
 try:
     import go_to_specific_point_on_map as Nav
+    #import navigation as Nav
     import measure_coverage as Area
     import sdr as SDR
   
@@ -32,7 +34,7 @@ def generate_rf_data(point_list):
           for point in point_list:
             index += 1    
             print("- {filename: 'p%s', position: { x: %s, y: %s}, power: %s}" % (index, point[0], point[1], point[2]), file = f)
-            print(" RF Data File Generated")
+          print(" RF Data File Generated")
       
 def handler(signum, frmae):
     raise Exception("Unable to reach pose :(")
@@ -53,10 +55,10 @@ if __name__ == '__main__':
         # Initialize
         rospy.init_node('follow_route', anonymous=False)
         navigator = Nav.GoToPose()
-        sdr_slam = Nav.SLAM()
+        #sdr_slam = Nav.SLAM()
 
-        sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
-        SDR.configure_device(sdr, center_freq=914e6)
+        #sdr = RtlSdrTcpClient(hostname='192.168.171.210', port=55366)
+        #SDR.configure_device(sdr, center_freq=914.5e6)
         
         data = []
 
@@ -67,33 +69,36 @@ if __name__ == '__main__':
             name = obj['filename']
             print(obj)
             signal.signal(signal.SIGALRM, handler)
-            signal.alarm(35)
+            signal.alarm(30)
             # Navigation
             try:
                 rospy.loginfo("Go to %s pose", name[:-4])
                 navigator.goto(obj['position'], obj['rotation'])
-                #rospy.loginfo("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Reached %s pose", name[:-4])
+                #rospy.loginfo("Reached %s pose", name[:-4])
+                time.sleep(1)
                 
                 # Measure sample location
-                sdr_slam.update()
-                sdr_pose = (sdr_slam.pose[X], sdr_slam.pose[Y])
-                print(sdr_pose)
+                #sdr_slam.update()
+                #sdr_pose = (sdr_slam.pose[X], sdr_slam.pose[Y])
+                #print(sdr_pose)
 
                 # Measure and calculate RF signal power
-                samples = SDR.receive_samples(sdr)
-                max_power, _ = SDR.get_power_from_PSD(samples, sdr, freq=915.1e6, plot=False)
+                #samples = SDR.receive_samples(sdr)
+                #max_power, _ = SDR.get_power_from_PSD(samples, sdr, freq=915.1e6, plot=False)
 
-                data.append(np.array([sdr_pose[X], sdr_pose[Y], max_power]))
+                #data.append(np.array([sdr_pose[X], sdr_pose[Y], max_power]))
 
             except Exception as exc:
                 print(exc)
 
-        generate_rf_data(data)
+        #generate_rf_data(data)
         navigator.generate_path()
+        navigator.generate_rf_data()
         # m.disp()
 
 
     except rospy.ROSInterruptException:
         rospy.loginfo("Ctrl-C caught. Quitting")
-        generate_rf_data(data)
+        #generate_rf_data(data)
         navigator.generate_path()
+        navigator.generate_rf_data()

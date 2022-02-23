@@ -140,17 +140,17 @@ def power_for_frequency_range(samples, sample_rate, center_freq, min_freq, max_f
 if __name__ == '__main__':
     
     # SDR attached to computer
-    sdr = RtlSdr()
+    #sdr = RtlSdr()
     # SDR attached to Raspberry Pi
-    # sdr = RtlSdrTcpClient(hostname='192.168.229.210', port=55366)
+    sdr = RtlSdrTcpClient(hostname='192.168.171.210', port=55366)
     
-    configure_device(sdr, center_freq=95e6)
+    configure_device(sdr, center_freq=914.5e6)
 
     samples = receive_samples(sdr)
 
     # close_connection(sdr)
 
-    measurment_freq = 96e6
+    measurment_freq = 915.05e6
 
     # Calculate Average signal power
     avg_pwr = np.mean(np.abs(samples)**2)   # Watts

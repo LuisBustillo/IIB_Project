@@ -26,11 +26,11 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-ROBOT_RADIUS = 0.23 / 2.
+ROBOT_RADIUS = 0.21 / 2.
 
 START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
-START_POSE_3 = np.array([-0.03, 0., 3.12], dtype=np.float32)
+START_POSE_3 = np.array([0.105, -0.55, -3.11], dtype=np.float32)
 START_POSE_4 = np.array([-0.03, 0., 3.12], dtype=np.float32)
 
 # Hepler Functions
@@ -148,7 +148,7 @@ def rotation_from_a_to_b(a, b, current_yaw):
 
     return turn_angle, new_yaw
 
-def draw_connections(path, text = False, head_width=0.05, head_length=0.1, arrow_length=0.1):
+def draw_connections(path, linewidth=1.0, text=False, head_width=0.05, head_length=0.1, arrow_length=0.1):
   n = len(path)
   for node in range(n):
         current_node = path[node]
@@ -157,7 +157,7 @@ def draw_connections(path, text = False, head_width=0.05, head_length=0.1, arrow
         else:
             next_node = path[node+1]
         
-        plt.plot([current_node[X], next_node[X]], [current_node[Y], next_node[Y]], 'b-')
+        plt.plot([current_node[X], next_node[X]], [current_node[Y], next_node[Y]], 'b-', linewidth=linewidth)
         
         disp = np.array(next_node) - np.array(current_node)
         dir = unit(disp)
@@ -167,12 +167,12 @@ def draw_connections(path, text = False, head_width=0.05, head_length=0.1, arrow
         if text == True:
           plt.text(current_node[X], current_node[Y], str(node))
 
-def draw_nodes(path, color):
+def draw_nodes(path, color, size=8):
   for node in path:
-        plt.scatter(node[X], node[Y], s=8, marker='o', color=color, zorder=1000)
+        plt.scatter(node[X], node[Y], s=size, marker='o', color=color, zorder=1000)
 
-def draw_individual_node(point, color):
-  plt.scatter(point[0], point[1], s=10, marker='o', color=color, zorder=1000)
+def draw_individual_node(point, color, size=10):
+  plt.scatter(point[0], point[1], s=size, marker='o', color=color, zorder=1000)
 
 def generate_yaml_path(path_points):
       with open('route.yaml', 'w') as f:
@@ -580,7 +580,7 @@ if __name__ == '__main__':
 
   inst, yaml = cpp(START_POSE_2, occupancy_grid, start_indices=[160, 160], end_indices=[400, 400], scale=15)
   generate_yaml_path(yaml)
-  
+  """
   # MAP 3 - IIB Project
   
   plt.axis('equal')
@@ -592,9 +592,9 @@ if __name__ == '__main__':
   print(occupancy_grid.get_index([-0.77, -0.7]))
   print(occupancy_grid.get_index([0.71, 0.75]))
 
-  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[900, 900], end_indices=[1100, 1100], scale=5)
+  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[900, 900], end_indices=[1100, 1100], scale=10)
   # start_indices=[370, 370], end_indices=[430, 430], scale=10 for res of 0.025
-  #generate_yaml_path(yaml)
+  generate_yaml_path(yaml)
     
   """
   # MAP 4 - IIB Test
@@ -610,5 +610,5 @@ if __name__ == '__main__':
 
   inst, yaml = cpp(START_POSE_4, occupancy_grid, start_indices=[920, 920], end_indices=[1080, 1080], scale=10)
   generate_yaml_path(yaml)
-  
+  """
   plt.show()

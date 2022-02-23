@@ -7,6 +7,7 @@ from scipy.interpolate import griddata
 
 from occupancy_grid import*
 import cpp
+import sdr
 
 """
 # Read information from yaml file
@@ -87,31 +88,36 @@ plt.show()
 
 if __name__ == '__main__':
 
+  #TODO post-process data from RF samples in sample.yaml
+
   # Read information from yaml files
 
   # RF DATA
-  #with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/data.yaml", 'r') as stream:
-  with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\data.yaml", 'r') as stream:
+  with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/data.yaml", 'r') as stream:
+  #with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\data.yaml", 'r') as stream:
     dataMap = yaml.safe_load(stream)
 
   # Process information from yaml file
   output = []
+  sdr_poses = []
   for obj in dataMap:
     power = obj['power']
+    sdr_poses.append(np.array([obj['position']['x'], obj['position']['y']]))
     output.append(np.array([obj['position']['x'], obj['position']['y'], power]))
 
   # PATH DATA
-  #with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/path.yaml", 'r') as stream:
-  with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\path.yaml", 'r') as stream2:
+  with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/path.yaml", 'r') as stream2:
+  #with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\path.yaml", 'r') as stream2:
     PathMap = yaml.safe_load(stream2)
 
   # Process information from yaml file
   path = []
-  for obj in PathMap:
-    power = obj['power']
-    path.append(np.array([obj['position']['x'], obj['position']['y']]))
-    
+  # spacing = np.arange(0, 19180, 40)
 
+  for obj in PathMap:
+    # if int((obj['filename'])[1:]) in spacing:
+      path.append(np.array([obj['position']['x'], obj['position']['y']]))
+  
   # Draw Contour Heatmap
   
   ngridx = 100
@@ -125,7 +131,7 @@ if __name__ == '__main__':
 
   xi = np.linspace(-1.1, 1.1, ngridx)
   yi = np.linspace(-1.1, 1.1, ngridy)
-  zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='cubic')    # method = linear, quadratic, cubic ...
+  zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='linear')    # method = linear, quadratic, cubic ...
 
   ax1.contour(xi, yi, zi, levels=10, linewidths=0.5, colors='k')
   cntr1 = ax1.contourf(xi, yi, zi, levels=10, cmap="viridis")
@@ -145,16 +151,16 @@ if __name__ == '__main__':
   fig2, ax2 = plt.subplots()
 
   occupancy_grid.draw_trajectory()
-  cpp.draw_nodes(path, 'green')
-  cpp.draw_connections(path, head_width=0.02, head_length=0.04, arrow_length=0.03)
-  cpp.draw_individual_node(path[0], 'violet')
+  cpp.draw_nodes(sdr_poses, 'green', size=6)
+  cpp.draw_connections(path, linewidth=0.5, head_width=0.01, head_length=0.01, arrow_length=0.01)
+  cpp.draw_individual_node(sdr_poses[0], 'violet', size=6)
 
   plt.axis('equal')
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
   ax2.set(xlim=(-1, 1), ylim=(-1, 1))
   ax2.set_title('Area Coverage')
-  plt.text(-0.25, -0.85, plot_txt)
+  plt.text(-0.25, -0.9, plot_txt)
 
   plt.show()
 

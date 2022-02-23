@@ -27,6 +27,11 @@ from nav_msgs.msg import Path
 # For pose information.
 from tf.transformations import euler_from_quaternion
 
+# For SDR antenna
+from pylab import *
+from rtlsdr import *
+import sdr as SDR
+
 # Constants used for indexing.
 X = 0
 Y = 1
@@ -38,7 +43,7 @@ UNKNOWN = 1
 OCCUPIED = 2
 
 ROBOT_RADIUS = 0.23 / 2.
-pose_offset = [-0.03, 0., 3.12]
+pose_offset = [0., 0., 0.]   # [-0.03, 0., 3.12] from SLAM
 
 class SLAM(object):
   def __init__(self):
@@ -121,6 +126,10 @@ class GoToPose():
         self.odom_frame= 'odom'
         self.slam = SLAM()
         self.positions = []
+        self.data = []
+        self.sdr = RtlSdrTcpClient(hostname='192.168.171.210', port=55366)
+        SDR.configure_device(self.sdr, center_freq=914.5e6)
+        self.offset = pose_offset
 
         self.r.sleep()
         try:
@@ -148,8 +157,10 @@ class GoToPose():
         self.slam.update()
 
         #(self.position, rotation) = self.get_odom()
-        self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
-        rotation = self.slam.pose[YAW]
+        #self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
+        #rotation = self.slam.pose[YAW]
+        self.position = Point(self.slam.pose[X] - self.offset[X], self.slam.pose[Y] - self.offset[Y], 0)
+        rotation = self.slam.pose[YAW] - self.offset[YAW]
 
         self.positions.append((self.position.x, self.position.y))
 
@@ -163,7 +174,7 @@ class GoToPose():
 
         print("goal", goal_x, goal_y, goal_z)
 
-        while distance > 0.02:
+        while distance > 0.025:
             if not self.slam.ready:
               self.r.sleep()
               continue
@@ -171,10 +182,12 @@ class GoToPose():
             self.slam.update()
 
             #(self.position, rotation) = self.get_odom()
-            self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
-            rotation = self.slam.pose[YAW]
+            #self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
+            #rotation = self.slam.pose[YAW]
+            self.position = Point(self.slam.pose[X] - self.offset[X], self.slam.pose[Y] - self.offset[Y], 0)
+            rotation = self.slam.pose[YAW] - self.offset[YAW]
 
-            self.positions.append((self.position.x, self.position.y))
+            #self.positions.append((self.position.x, self.position.y))
 
             x_start = self.position.x
             y_start = self.position.y
@@ -193,54 +206,69 @@ class GoToPose():
             # proportional control for heading
             if path_angle >= 0:
                 if rotation <= path_angle and rotation >= path_angle - pi:
-                    self.move_cmd.angular.z = angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 1)
+                    self.move_cmd.angular.z = angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65) # + 0.5
                 else:
-                    self.move_cmd.angular.z = -1 * angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 1)
+                    self.move_cmd.angular.z = -1 * angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65)
             else:
                 if rotation <= path_angle + pi and rotation > path_angle: 
-                    self.move_cmd.angular.z = -1 * angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 1)
+                    self.move_cmd.angular.z = -1 * angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65)
                 else:
-                    self.move_cmd.angular.z = angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 1)
+                    self.move_cmd.angular.z = angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65)
 
             old_distance = distance
             
             self.cmd_vel.publish(self.move_cmd)
-            
-        #(self.position, rotation) = self.get_odom()
-        self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
-        rotation = self.slam.pose[YAW]
-
+        
         self.slam.update()
+
+        #(self.position, rotation) = self.get_odom()
+        #self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
+        #rotation = self.slam.pose[YAW]
+        self.position = Point(self.slam.pose[X] - self.offset[X], self.slam.pose[Y] - self.offset[Y], 0)
+        rotation = self.slam.pose[YAW] - self.offset[YAW]
+
+        self.positions.append((self.position.x, self.position.y))
 
         if abs(goal_z) > pi / 2:
             while abs(rotation - goal_z) > 0.01:
                 #(self.position, rotation) = self.get_odom()
                 self.slam.update()
-                self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
-                rotation = self.slam.pose[YAW]
+                #self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
+                #rotation = self.slam.pose[YAW]
+                self.position = Point(self.slam.pose[X] - self.offset[X], self.slam.pose[Y] - self.offset[Y], 0)
+                rotation = self.slam.pose[YAW] - self.offset[YAW]
 
                 if goal_z >= 0:
                     if rotation <= goal_z and rotation >= goal_z - pi:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.5)
+                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.3)
                     else:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.5)
+                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.3)
                 else:
                     if rotation <= goal_z + pi and rotation > goal_z:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.5)
+                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.3)
                     else:
                         self.move_cmd.linear.x = 0.00
-                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.5)
+                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.3)
                 self.cmd_vel.publish(self.move_cmd)
 
         # print(self.position.x, self.position.y, rotation)
+        self.slam.update()
 
         self.positions.append((self.position.x, self.position.y))
 
         rospy.loginfo("point reached")
+
         self.cmd_vel.publish(Twist())
+
+        #Measure and calculate RF signal power
+        samples = SDR.receive_samples(self.sdr)
+        max_power, _ = SDR.get_power_from_PSD(samples, self.sdr, freq=915.1e6, plot=False)
+        (self.data).append(np.array([self.position.x, self.position.y, max_power]))
+
+        self.r.sleep()
 
     def get_odom(self):
         try:
@@ -260,7 +288,15 @@ class GoToPose():
           for point in self.positions:
             index += 1    
             print("- {filename: 'p%s', position: { x: %s, y: %s} }" % (index, point[0], point[1]), file = f)
-            print(" Path File Generated")
+          print(" Path File Generated")
+
+    def generate_rf_data(self):
+      with open('/home/luis/catkin_ws/src/IIB_Project/part2/ros/data.yaml', 'w') as f:
+          index = 0
+          for point in self.data:
+            index += 1    
+            print("- {filename: 'p%s', position: { x: %s, y: %s}, power: %s}" % (index, point[0], point[1], point[2]), file = f)
+          print(" RF Data File Generated")
 
     def shutdown(self):
         self.cmd_vel.publish(Twist())

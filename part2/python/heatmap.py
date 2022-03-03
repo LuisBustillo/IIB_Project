@@ -1,9 +1,11 @@
+from turtle import color
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import numpy as np
 import yaml
 
 from scipy.interpolate import griddata
+from sklearn.metrics import r2_score
 
 from occupancy_grid import*
 import cpp
@@ -87,7 +89,9 @@ plt.show()
 """
 
 if __name__ == '__main__':
-
+  
+  pluto_location = np.array([-0.75, 0.90])
+  
   #TODO post-process data from RF samples in sample.yaml
 
   # Read information from yaml files
@@ -154,6 +158,7 @@ if __name__ == '__main__':
   cpp.draw_nodes(sdr_poses, 'green', size=6)
   cpp.draw_connections(path, linewidth=0.5, head_width=0.01, head_length=0.01, arrow_length=0.01)
   cpp.draw_individual_node(sdr_poses[0], 'violet', size=6)
+  cpp.draw_individual_node(pluto_location, 'orange', size=20)
 
   plt.axis('equal')
   plt.xlabel('x (m)')
@@ -161,6 +166,31 @@ if __name__ == '__main__':
   ax2.set(xlim=(-1, 1), ylim=(-1, 1))
   ax2.set_title('Area Coverage')
   plt.text(-0.25, -0.9, plot_txt)
+
+  # Plot Signal power vs range
+
+  range = []    # x
+  power = []    # y
+
+  for point in output:
+    dist = cpp.find_dist_from_a_to_b(pluto_location, point[:2])
+    range.append(dist)
+    power.append(point[2])
+
+  x, y = range, power
+  fig3, ax3 = plt.subplots()
+
+  plt.scatter(x, y)
+  plt.xlabel('Distance from Tx (m)')
+  plt.ylabel('Signal Power (dB)')
+
+  z = np.polyfit(x, y, 1)
+  y_hat = np.poly1d(z)(x)
+  plt.plot(x, y_hat, "r--")
+
+  text = f"$y={z[0]:0.3f}\;x{z[1]:+0.3f}$\n$R^2 = {r2_score(y,y_hat):0.3f}$"
+  plt.gca().text(0.05, 0.95, text,transform=plt.gca().transAxes, fontsize=14, verticalalignment='top')
+
 
   plt.show()
 

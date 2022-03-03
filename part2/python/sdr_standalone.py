@@ -49,7 +49,7 @@ def append_rf_data(point, index):
 # SDR attached to Raspberry Pi
 sdr = RtlSdrTcpClient(hostname='192.168.228.210', port=55366)
     
-configure_device(sdr, center_freq=914.5e6)
+configure_device(sdr, center_freq=914.6e6)
 
 data = []
 localization = slam.SLAM()

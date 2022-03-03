@@ -26,8 +26,6 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-ROBOT_RADIUS = 0.21 / 2.
-
 START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
 START_POSE_3 = np.array([0.75, 0.588, 1.63], dtype=np.float32)

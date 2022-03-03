@@ -128,7 +128,7 @@ class GoToPose():
         self.positions = []
         self.data = []
         self.sdr = RtlSdrTcpClient(hostname='192.168.228.210', port=55366)
-        SDR.configure_device(self.sdr, center_freq=914.5e6)
+        SDR.configure_device(self.sdr, center_freq=914.6e6)
         self.offset = pose_offset
 
         self.r.sleep()

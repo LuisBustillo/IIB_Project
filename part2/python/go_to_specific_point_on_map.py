@@ -42,7 +42,7 @@ FREE = 0
 UNKNOWN = 1
 OCCUPIED = 2
 
-ROBOT_RADIUS = 0.23 / 2.
+ROBOT_RADIUS = 0.21 / 2.
 pose_offset = [0., 0., 0.]   # [-0.03, 0., 3.12] from SLAM
 
 class SLAM(object):
@@ -127,7 +127,7 @@ class GoToPose():
         self.slam = SLAM()
         self.positions = []
         self.data = []
-        self.sdr = RtlSdrTcpClient(hostname='192.168.171.210', port=55366)
+        self.sdr = RtlSdrTcpClient(hostname='192.168.228.210', port=55366)
         SDR.configure_device(self.sdr, center_freq=914.5e6)
         self.offset = pose_offset
 

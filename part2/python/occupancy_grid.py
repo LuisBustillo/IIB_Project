@@ -18,7 +18,7 @@ UNKNOWN = 1
 OCCUPIED = 2
 
 
-ROBOT_RADIUS = 0.23 / 2.
+ROBOT_RADIUS = 0.21 / 2.
 
 # Defines an occupancy grid.
 class OccupancyGrid(object):

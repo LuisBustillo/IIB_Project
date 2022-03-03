@@ -8,7 +8,7 @@ sdr = adi.Pluto("ip:192.168.2.1")
 sdr.sample_rate = int(sample_rate)
 sdr.tx_rf_bandwidth = int(sample_rate) # filter cutoff, just set it to the same as sample rate
 sdr.tx_lo = int(center_freq)
-sdr.tx_hardwaregain_chan0 = -20 # Increase to increase tx power, valid range is -90 to 0 dB
+sdr.tx_hardwaregain_chan0 = -25 # Increase to increase tx power, valid range is -90 to 0 dB
 
 N = 10000 # number of samples to transmit at once
 t = np.arange(N)/sample_rate
@@ -23,5 +23,5 @@ for i in range(100):
 sdr.tx_cyclic_buffer = True # Enable cyclic buffers
 sdr.tx(samples)
 
-#sdr.tx_destroy_buffer() # Destroy cyclic buffer
+# sdr.tx_destroy_buffer() # Destroy cyclic buffer
 # sdr.tx(samples)

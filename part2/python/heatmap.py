@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
   xi = np.linspace(-1.1, 1.1, ngridx)
   yi = np.linspace(-1.1, 1.1, ngridy)
-  zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='linear')    # method = linear, quadratic, cubic ...
+  zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='cubic')    # method = linear, nearest, cubic ...
 
   ax1.contour(xi, yi, zi, levels=10, linewidths=0.5, colors='k')
   cntr1 = ax1.contourf(xi, yi, zi, levels=10, cmap="viridis")
@@ -145,7 +145,7 @@ if __name__ == '__main__':
   
   # Calculate and draw Area Coverage
   
-  percentage = cpp.area_covered(occupancy_grid, path, robot_radius=ROBOT_RADIUS, duplicates=False)
+  percentage = cpp.area_covered(occupancy_grid, path, robot_radius=0.09, duplicates=False)
   plot_txt = "{}% Coverage".format(np.around(percentage, 1))
   
   fig2, ax2 = plt.subplots()

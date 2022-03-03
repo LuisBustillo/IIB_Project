@@ -57,7 +57,7 @@ if __name__ == '__main__':
         navigator = Nav.GoToPose()
         #sdr_slam = Nav.SLAM()
 
-        #sdr = RtlSdrTcpClient(hostname='192.168.171.210', port=55366)
+        #sdr = RtlSdrTcpClient(hostname='192.168.228.210', port=55366)
         #SDR.configure_device(sdr, center_freq=914.5e6)
         
         data = []

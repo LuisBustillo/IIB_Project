@@ -15,6 +15,7 @@ import yaml
 import cv2
 from stc import stc
 from occupancy_grid import*
+import timeit
 
 # Constants used for indexing.
 X = 0
@@ -28,7 +29,7 @@ OCCUPIED = 2
 
 START_POSE_1 = np.array([-1.0, -1.0, 0], dtype=np.float32)
 START_POSE_2 = np.array([-0.95, 2.4, 0], dtype=np.float32)
-START_POSE_3 = np.array([0.75, 0.588, 1.63], dtype=np.float32)
+START_POSE_3 = np.array([0., 0., 0.], dtype=np.float32)
 START_POSE_4 = np.array([-0.03, 0., 3.12], dtype=np.float32)
 
 # Hepler Functions
@@ -291,7 +292,7 @@ def prm(start_pose, occupancy_grid, N=80):
                 dfs(visited, graph, neighbor)
 
     dfs(visited, graph, graph[0])
-    """
+    
     # Plot PRM Nodes
     for node in graph:
         plt.scatter(node.pose[X], node.pose[Y], s=8, marker='o', color='red', zorder=1000)
@@ -306,8 +307,8 @@ def prm(start_pose, occupancy_grid, N=80):
         
         plt.plot([current_node.pose[X], next_node.pose[X]], [current_node.pose[Y], next_node.pose[Y]], 'b-')
         plt.text(current_node.pose[X], current_node.pose[Y], str(node))
+  
     
-    """
     # Set the YAW for each node in graph
     def adjust_pose(current_node, next_node, occupancy_grid):
 
@@ -582,18 +583,19 @@ if __name__ == '__main__':
   # MAP 3 - IIB Project
   
   plt.axis('equal')
-  plt.xlabel('x')
-  plt.ylabel('y')
+  plt.xlabel('x (m)')
+  plt.ylabel('y (m)')
   plt.xlim([-1., 1.])
   plt.ylim([-1., 1.])
   
   print(occupancy_grid.get_index([-0.77, -0.7]))
   print(occupancy_grid.get_index([0.71, 0.75]))
 
-  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[900, 900], end_indices=[1100, 1100], scale=6)
+  
+  inst, yaml = cpp(START_POSE_3, occupancy_grid, start_indices=[800, 800], end_indices=[1200, 1200], scale=10)
   # start_indices=[370, 370], end_indices=[430, 430], scale=10 for res of 0.025
   generate_yaml_path(yaml)
-    
+
   """
   # MAP 4 - IIB Test
   

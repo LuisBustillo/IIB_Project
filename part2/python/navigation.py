@@ -11,7 +11,7 @@ import rospy
 import yaml
 
 import tf
-from math import radians, copysign, sqrt, pow, pi, atan2
+from math import radians, copysign, sqrt, pow, pi, atan2, isnan
 import numpy as np
 import scipy
 import time
@@ -47,13 +47,15 @@ UNKNOWN = 1
 OCCUPIED = 2
 
 # Constants for PID Controller
-kp_distance = 0.03       # 1
-ki_distance = 0.01
-kd_distance = 0.05
+dt = 1e-3
 
-kp_angle = 0.5          # 1
-ki_angle = 0.03
-kd_angle = 0.05
+kp_distance = 0.03      # 1
+ki_distance = 0         # 0.01
+kd_distance = 0         # 0.05
+
+kp_angle = 0.3          # 1
+ki_angle = 0            # 0.03
+kd_angle = 0            # 0.05
 
 class SLAM(object):
   def __init__(self):
@@ -109,7 +111,7 @@ class GoToPose():
         self.cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=5)
         self.position = Point()
         self.move_cmd = Twist()
-        self.r = rospy.Rate(10)
+        self.r = rospy.Rate(1000)
         self.tf_listener = tf.TransformListener()
         self.odom_frame = 'odom'
         self.slam = SLAM()
@@ -144,21 +146,31 @@ class GoToPose():
 
         self.positions.append((self.position.x, self.position.y))
 
-        last_rotation = 0
-        linear_speed = 0.03     #kp_distance
-        angular_speed = 0.3     #kp_angular
+        # Initial distance errro
+        distance_error = sqrt(pow((goal_x - self.position.x), 2) + pow((goal_y - self.position.y), 2))
 
-        goal_distance = sqrt(pow(goal_x - self.position.x, 2) + pow(goal_y - self.position.y, 2))
-        #distance is the error for length, x,y
-        distance = goal_distance
-        previous_distance = 0
-        total_distance = 0
+        # Distance errors for PID
+        previous_distance_error = distance_error
+        distance_integral = 0
 
-        previous_angle = 0
-        total_angle = 0
-       
+        # Angle errors for PID
+        previous_angle_error = 0
+        angle_integral = 0
 
-        while distance > 0.03:
+        """
+        previous_error := 0
+        integral := 0
+            loop:
+                error := setpoint - measured_value
+                proportional := error;
+                integral := integral + error * dt
+                derivative := (error - previous_error) / dt
+                output := Kp * proportional + Ki * integral + Kd * derivative
+                previous_error := error
+                wait(dt)
+                goto loop
+        """
+        while distance_error > 0.02:
 
             if not self.slam.ready:
               self.r.sleep()
@@ -175,49 +187,71 @@ class GoToPose():
             x_start = self.position.x
             y_start = self.position.y
 
-            #path_angle = error
             path_angle = atan2(goal_y - y_start, goal_x- x_start)
 
-            if path_angle < -pi/4 or path_angle > pi/4:
+            # Calculating errors
+            angle_error = path_angle - rotation
+            distance_error = sqrt(pow((goal_x - x_start), 2) + pow((goal_y - y_start), 2))
 
-                if goal_y < 0 and y_start < goal_y:
-                    path_angle = -2*pi + path_angle
+            # Proportional terms
+            angle_prop = angle_error
+            distance_prop = distance_error
 
-                elif goal_y >= 0 and y_start > goal_y:
-                    path_angle = 2*pi + path_angle
+            # Integral terms
+            angle_integral = angle_integral + angle_error*dt
+            distance_integral = distance_integral + distance_error*dt
 
-            if last_rotation > pi-0.1 and rotation <= 0:
-                rotation = 2*pi + rotation
+            # Derivative terms
+            angle_dev = (angle_error - previous_angle_error)/dt
+            distance_dev = (distance_error - previous_distance_error)/dt
+            
+            # PID control
+            control_signal_angle = kp_angle*angle_prop + ki_angle*angle_integral + kd_distance*angle_dev
+            control_signal_distance = kp_distance*distance_prop + ki_distance*distance_integral + kd_distance*distance_dev
 
-            elif last_rotation < -pi+0.1 and rotation > 0:
-                rotation = -2*pi + rotation
-
-
-            diff_angle = path_angle - previous_angle
-            diff_distance = distance - previous_distance
-
-            distance = sqrt(pow((goal_x - x_start), 2) + pow((goal_y - y_start), 2))
-
-            control_signal_distance = 0.8*(kp_distance*distance + ki_distance*total_distance + kd_distance*diff_distance)
-
-            control_signal_angle = 0.4*(kp_angle*path_angle + ki_angle*total_angle + kd_distance*diff_angle)
-
-            self.move_cmd.angular.z = (control_signal_angle) - rotation
-            #self.move_cmd.linear.x = min(linear_speed * distance, 0.1)
-            self.move_cmd.linear.x = min(control_signal_distance, 0.03)
+            # detect and halt open loop behavior
+            if distance_error > previous_distance_error + 0.1:
+                break
+            
+            # Output signals
+            self.move_cmd.angular.z = control_signal_angle
+            
+            self.move_cmd.linear.x = min(control_signal_distance, 0.025)
 
             if self.move_cmd.angular.z > 0:
-                self.move_cmd.angular.z = min(self.move_cmd.angular.z, 0.3)
+                self.move_cmd.angular.z = min(self.move_cmd.angular.z, 0.55)
             else:
-                self.move_cmd.angular.z = max(self.move_cmd.angular.z, -0.3)
+                self.move_cmd.angular.z = max(self.move_cmd.angular.z, -0.55)
 
-            last_rotation = rotation
+            """
+            # proportional control for linear speed
+            self.move_cmd.linear.x = min(linear_speed * distance ** 1.1 + 0.01, linear_speed)
+
+            # proportional control for heading
+            if path_angle >= 0:
+                if rotation <= path_angle and rotation >= path_angle - pi:
+                    self.move_cmd.angular.z = angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65) # + 0.5
+                else:
+                    self.move_cmd.angular.z = -1 * angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65)
+            else:
+                if rotation <= path_angle + pi and rotation > path_angle: 
+                    self.move_cmd.angular.z = -1 * angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65)
+                else:
+                    self.move_cmd.angular.z = angular_speed * z_dist / (abs(self.move_cmd.linear.x) + 0.65)
+
+            """
             self.cmd_vel.publish(self.move_cmd)
+            
+            previous_angle_error = angle_error
+            previous_distance_error = distance_error
+
             self.r.sleep()
-            previous_distance = distance
-            previous_angle = path_angle
-            total_angle = total_angle + path_angle
-            total_distance = total_distance + distance
+
+        self.slam.update()
+
+        #(self.position, rotation) = self.get_odom()
+        self.position = Point(self.slam.pose[X], self.slam.pose[Y], 0)
+        rotation = self.slam.pose[YAW]
 
         while abs(rotation - goal_z) > 0.01:
             #(self.position, rotation) = self.get_odom()
@@ -226,21 +260,20 @@ class GoToPose():
             rotation = self.slam.pose[YAW]
 
             if goal_z >= 0:
-                if rotation <= goal_z and rotation >= goal_z - pi:
-                    self.move_cmd.linear.x = 0.00
-                    self.move_cmd.angular.z = 0.3
-                else:
-                    self.move_cmd.linear.x = 0.00
-                    self.move_cmd.angular.z = -0.3
+                    if rotation <= goal_z and rotation >= goal_z - pi:
+                        self.move_cmd.linear.x = 0.00
+                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.3)
+                    else:
+                        self.move_cmd.linear.x = 0.00
+                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.3)
             else:
-                if rotation <= goal_z + pi and rotation > goal_z:
-                    self.move_cmd.linear.x = 0.00
-                    self.move_cmd.angular.z = -0.3
-                else:
-                    self.move_cmd.linear.x = 0.00
-                    self.move_cmd.angular.z = 0.3
+                    if rotation <= goal_z + pi and rotation > goal_z:
+                        self.move_cmd.linear.x = 0.00
+                        self.move_cmd.angular.z = -min(1. * abs(rotation - goal_z), 0.3)
+                    else:
+                        self.move_cmd.linear.x = 0.00
+                        self.move_cmd.angular.z = min(1. * abs(rotation - goal_z), 0.3)
             self.cmd_vel.publish(self.move_cmd)
-            self.r.sleep()
 
         rospy.loginfo("Pose Reached!")
 
@@ -252,6 +285,8 @@ class GoToPose():
         # samples = SDR.receive_samples(self.sdr)
         # max_power, _ = SDR.get_power_from_PSD(samples, self.sdr, freq=915.1e6, plot=False)
         # (self.data).append(np.array([self.position.x, self.position.y, max_power]))
+
+        self.r.sleep()
 
     def get_scan(self):
         scan = rospy.wait_for_message('scan', LaserScan)
@@ -279,7 +314,7 @@ class GoToPose():
         for i in range(samples_view):
             if scan_filter[i] == float('Inf'):
                 scan_filter[i] = 3.5
-            elif math.isnan(scan_filter[i]):
+            elif isnan(scan_filter[i]):
                 scan_filter[i] = 0
         
         return scan_filter

@@ -97,8 +97,8 @@ if __name__ == '__main__':
   # Read information from yaml files
 
   # RF DATA
-  with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/data.yaml", 'r') as stream:
-  #with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\data.yaml", 'r') as stream:
+  #with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/data.yaml", 'r') as stream:
+  with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\data.yaml", 'r') as stream:
     dataMap = yaml.safe_load(stream)
 
   # Process information from yaml file
@@ -110,8 +110,8 @@ if __name__ == '__main__':
     output.append(np.array([obj['position']['x'], obj['position']['y'], power]))
 
   # PATH DATA
-  with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/path.yaml", 'r') as stream2:
-  #with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\path.yaml", 'r') as stream2:
+  #with open("/home/luis/catkin_ws/src/IIB_Project/part2/ros/path.yaml", 'r') as stream2:
+  with open("C:\\Users\\34606\\OneDrive - University of Cambridge\\Escritorio\\IIB_Project\\part2\\ros\\path.yaml", 'r') as stream2:
     PathMap = yaml.safe_load(stream2)
 
   # Process information from yaml file
@@ -135,7 +135,7 @@ if __name__ == '__main__':
 
   xi = np.linspace(-1.1, 1.1, ngridx)
   yi = np.linspace(-1.1, 1.1, ngridy)
-  zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='cubic')    # method = linear, nearest, cubic ...
+  zi = griddata((x, y), z, (xi[None, :], yi[:, None]), method='linear')    # method = linear, nearest, cubic ...
 
   ax1.contour(xi, yi, zi, levels=10, linewidths=0.5, colors='k')
   cntr1 = ax1.contourf(xi, yi, zi, levels=10, cmap="viridis")
@@ -149,14 +149,15 @@ if __name__ == '__main__':
   
   # Calculate and draw Area Coverage
   
-  percentage = cpp.area_covered(occupancy_grid, path, robot_radius=0.09, duplicates=False)
+  percentage = cpp.area_covered(occupancy_grid, path, robot_radius=0.09, duplicates=True)
   plot_txt = "{}% Coverage".format(np.around(percentage, 1))
   
   fig2, ax2 = plt.subplots()
 
   occupancy_grid.draw_trajectory()
+  # occupancy_grid.draw()
   cpp.draw_nodes(sdr_poses, 'green', size=6)
-  cpp.draw_connections(path, linewidth=0.5, head_width=0.01, head_length=0.01, arrow_length=0.01)
+  cpp.draw_connections(path, linewidth=0.5, head_width=0.01, head_length=0.02, arrow_length=0.01)
   cpp.draw_individual_node(sdr_poses[0], 'violet', size=6)
   cpp.draw_individual_node(pluto_location, 'orange', size=20)
 
@@ -164,8 +165,8 @@ if __name__ == '__main__':
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
   ax2.set(xlim=(-1, 1), ylim=(-1, 1))
-  ax2.set_title('Area Coverage')
-  plt.text(-0.25, -0.9, plot_txt)
+  ax2.set_title(str(plot_txt))
+  # plt.text(-0.25, -0.9, plot_txt)
 
   # Plot Signal power vs range
 

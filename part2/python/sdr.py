@@ -15,7 +15,7 @@ def configure_device(sdr, sample_rate=2.4e6, center_freq=914e6):
     sdr.sample_rate = sample_rate  
     sdr.center_freq = center_freq     
     sdr.freq_correction = 60   # PPM
-    sdr.gain = 'auto'
+    sdr.gain = 10
 
 # Read Samples
 def receive_samples(sdr, num_samples=256*1024):
@@ -63,6 +63,9 @@ def get_power_from_PSD(samples, sdr, freq, plot=False):
 
     power_at_freq = dB(Pxx[f_idx])
     max_power = dB(max(Pxx))
+
+    #TODO write algorithm for second peak
+    # for sample in samples
 
     if plot:
         xlabel('Frequency (MHz)')
@@ -140,9 +143,9 @@ def power_for_frequency_range(samples, sample_rate, center_freq, min_freq, max_f
 if __name__ == '__main__':
     
     # SDR attached to computer
-    #sdr = RtlSdr()
+    sdr = RtlSdr()
     # SDR attached to Raspberry Pi
-    sdr = RtlSdrTcpClient(hostname='192.168.228.210', port=55366)
+    #sdr = RtlSdrTcpClient(hostname='192.168.228.210', port=55366)
     
     configure_device(sdr, center_freq=914.6e6)
 
@@ -150,7 +153,7 @@ if __name__ == '__main__':
 
     # close_connection(sdr)
 
-    measurment_freq = 915.05e6
+    measurment_freq = 915.0e6
 
     # Calculate Average signal power
     avg_pwr = np.mean(np.abs(samples)**2)   # Watts

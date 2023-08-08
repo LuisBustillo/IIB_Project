@@ -44,6 +44,7 @@ OCCUPIED = 2
 
 ROBOT_RADIUS = 0.21 / 2.
 pose_offset = [0., 0., 0.]   # [-0.03, 0., 3.12] from SLAM
+antenna_pos = [0.055, 0.065]   #TODO Check
 
 class SLAM(object):
   def __init__(self):
@@ -266,7 +267,8 @@ class GoToPose():
         #Measure and calculate RF signal power
         samples = SDR.receive_samples(self.sdr)
         max_power, _ = SDR.get_power_from_PSD(samples, self.sdr, freq=915.1e6, plot=False)
-        (self.data).append(np.array([self.position.x, self.position.y, max_power]))
+        x, y = self.adjust_reading()
+        (self.data).append(np.array([x, y, max_power]))
 
         self.r.sleep()
 
@@ -297,6 +299,14 @@ class GoToPose():
             index += 1    
             print("- {filename: 'p%s', position: { x: %s, y: %s}, power: %s}" % (index, point[0], point[1], point[2]), file = f)
           print(" RF Data File Generated")
+
+    def adjust_reading(self):
+      lx = antenna_pos[0]*np.cos(self.pose[YAW]) - antenna_pos[1]*np.sin(self.pose[YAW])
+      ly = antenna_pos[0]*np.sin(self.pose[YAW]) + antenna_pos[1]*np.cos(self.pose[YAW])
+      x = self.position.x + lx
+      y = self.position.y + ly
+
+      return x, y
 
     def shutdown(self):
         self.cmd_vel.publish(Twist())
